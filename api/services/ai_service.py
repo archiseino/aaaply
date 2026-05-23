@@ -1,6 +1,5 @@
 import google.generativeai as genai
 import json
-import PIL.Image
 import os
 import random
 import time
