@@ -5,6 +5,9 @@ import sys
 # Add the project root to sys.path so we can import api modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from api.services.scraper_service import scraper_service
 from api.services.supabase_service import supabase_service
 import logging

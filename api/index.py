@@ -25,6 +25,7 @@ import asyncio
 import time
 import random
 import logging
+import redis as _redis
 from typing import Optional
 
 logging.basicConfig(level=logging.INFO)
@@ -44,6 +45,19 @@ try:
 except ImportError:
     kv = None
     KV_AVAILABLE = False
+
+_REDIS_HOST = os.environ.get("REDIS_HOST")
+_REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
+local_redis = None
+LOCAL_REDIS_AVAILABLE = False
+if _REDIS_HOST:
+    try:
+        local_redis = _redis.Redis(host=_REDIS_HOST, port=_REDIS_PORT, db=0, socket_connect_timeout=2)
+        local_redis.ping()
+        LOCAL_REDIS_AVAILABLE = True
+        logger.info(f"Local Redis connected at {_REDIS_HOST}:{_REDIS_PORT}")
+    except Exception as e:
+        logger.warning(f"Local Redis connection failed: {e}")
 
 _memory_cache: dict[str, tuple[str, float]] = {}
 MEMORY_CACHE_MAX = 200
@@ -74,6 +88,12 @@ async def cache_get(key: str) -> Optional[str]:
             return kv.get(key)
         except Exception as e:
             logger.error(f"KV get error: {e}")
+    if LOCAL_REDIS_AVAILABLE:
+        try:
+            val = local_redis.get(key)
+            return val.decode() if val is not None else None
+        except Exception as e:
+            logger.error(f"Local Redis get error: {e}")
     return _memory_get(key)
 
 async def cache_set(key: str, value: str, ttl: int = CACHE_TTL_GENERATE) -> None:
@@ -83,6 +103,12 @@ async def cache_set(key: str, value: str, ttl: int = CACHE_TTL_GENERATE) -> None
             return
         except Exception as e:
             logger.error(f"KV set error: {e}")
+    if LOCAL_REDIS_AVAILABLE:
+        try:
+            local_redis.set(key, value, ex=ttl)
+            return
+        except Exception as e:
+            logger.error(f"Local Redis set error: {e}")
     _memory_set(key, value, ttl)
 
 async def cache_incr(key: str, ttl: int = CACHE_TTL_RATE_LIMIT) -> int:
@@ -94,6 +120,14 @@ async def cache_incr(key: str, ttl: int = CACHE_TTL_RATE_LIMIT) -> int:
             return val
         except Exception as e:
             logger.error(f"KV incr error: {e}")
+    if LOCAL_REDIS_AVAILABLE:
+        try:
+            val = local_redis.incr(key)
+            if val == 1:
+                local_redis.expire(key, ttl)
+            return val
+        except Exception as e:
+            logger.error(f"Local Redis incr error: {e}")
     raw = _memory_get(key)
     count = (int(raw) + 1) if raw else 1
     _memory_set(key, str(count), ttl)

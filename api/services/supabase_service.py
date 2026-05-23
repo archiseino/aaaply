@@ -37,7 +37,7 @@ class SupabaseService:
 
     def _get_base_url(self):
         url, _ = self._get_credentials()
-        return f"{url}/rest/v1" if url else ""
+        return url or ""
 
     async def get_jobs(self, category: str = "All", search: str = "") -> List[dict]:
         if not self._is_ready(): return []
