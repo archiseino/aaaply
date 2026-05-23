@@ -40,6 +40,9 @@ Available skills: `tdd-red`, `tdd-green`, `tdd-refactor`, `test-setup`.
 
 ## Commands
 ```bash
+# Dev (both servers)
+npm run dev                                    # Start backend (:8000) + frontend (:5173) concurrently
+
 # Backend
 python run_backend.py                          # Start API server on :8000
 pytest api/tests/ -v                           # Run all backend tests

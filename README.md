@@ -8,27 +8,30 @@
 
 ```
 sobatapply-monorepo/
-├── api/                    # FastAPI backend (routes + services)
-│   ├── index.py            # API entry point (endpoints, cache, rate limiting)
-│   ├── models.py           # Pydantic schemas
+├── AGENTS.md                # Project memory (loaded by opencode on start)
+├── opencode.json            # opencode project config
+├── .opencode/skills/        # TDD workflow skills (tdd-red, tdd-green, tdd-refactor, test-setup)
+├── pyproject.toml           # Pytest + coverage config
+├── api/                     # FastAPI backend (routes + services)
+│   ├── index.py             # API entry point (endpoints, cache, rate limiting)
+│   ├── models.py            # Pydantic schemas
+│   ├── tests/               # Backend tests (pytest + async fixtures)
 │   └── services/
-│       ├── ai_service.py   # Gemini AI integration (email gen, CV extract, revise)
-│       ├── scraper_service.py  # Job board scrapers (Bing, Glints, etc.)
-│       └── supabase_service.py # Supabase CRUD for jobs
-├── frontend/               # React SPA (Vite + Tailwind)
+│       ├── ai_service.py    # Gemini AI integration (email gen, CV extract, revise)
+│       ├── scraper_service.py   # Job board scrapers (Kalibrr, LinkedIn, etc.)
+│       └── supabase_service.py  # Supabase/PostgREST CRUD for jobs
+├── frontend/                # React SPA (Vite + Tailwind)
+│   ├── vitest.config.ts     # Vitest config (jsdom, global setup)
 │   └── src/
 │       ├── App.tsx          # Main UI
 │       ├── components/      # UI components
+│       ├── setupTests.ts    # Test setup (jest-dom matchers)
 │       └── utils/           # Gmail/Outlook API, key rotation
-├── backend/                # Local server + PyInstaller packaging
-│   ├── main.py             # Uvicorn launcher with static file mount
-│   ├── launcher.py         # Desktop launcher (opens app in kiosk browser)
-│   └── build_exe.py        # PyInstaller build script
-├── db/                     # Docker DB init + seed scripts
-│   ├── init.sql            # CREATE TABLE jobs (runs on first docker compose up)
-│   └── seed.py             # Seeds sample job data into local PostgREST
-├── scripts/                 # Utility scripts
-└── services/                # Legacy AI service module
+├── db/                      # Docker DB init + seed scripts
+│   ├── init.sql             # CREATE TABLE jobs (runs on first docker compose up)
+│   └── seed.py              # Seeds sample job data into local PostgREST
+├── scripts/                  # Utility scripts
+└── services/                 # Legacy AI service module
 ```
 
 ---
@@ -66,6 +69,7 @@ The `requirements.txt` includes:
 - `Pillow` — image processing
 - `python-dotenv` — environment variables
 - `python-multipart` — file uploads
+- `pytest`, `pytest-asyncio`, `pytest-cov` — testing
 
 ### 2. Environment Variables
 
@@ -164,22 +168,26 @@ docker compose down
 
 ### 6. Run the App
 
-**Start backend** (terminal 1):
+**Start both frontend + backend** (single terminal):
+```bash
+npm run dev
+# Backend: http://localhost:8000 (hot reload)
+# Frontend: http://localhost:5173 (hot reload, proxies /api to :8000)
+```
+
+Or start them separately in two terminals:
+
+**Backend** (terminal 1):
 ```bash
 python run_backend.py
 # Server starts at http://localhost:8000
 ```
 
-**Start frontend** (terminal 2):
+**Frontend** (terminal 2):
 ```bash
 cd frontend
 npm run dev
 # Dev server at http://localhost:5173 (proxies /api to :8000)
-```
-
-Or use the desktop launcher which starts both in-app browser:
-```bash
-python backend/launcher.py
 ```
 
 ---
