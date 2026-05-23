@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+google-generativeai
+pydantic
+python-multipart
+Pillow
+httpx
+beautifulsoup4
+playwright
+playwright-stealth
+python-dotenv

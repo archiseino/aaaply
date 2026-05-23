@@ -1,0 +1,9 @@
+# Ignore local backend and development files for Vercel
+backend/
+clipboard_cache/
+venv/
+.venv/
+run_backend.py
+PENTING.txt
+SMTP_GUIDE.md
+scripts/
