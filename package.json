@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n be,fe -c blue,green \"python run_backend.py\" \"cd frontend && npm run dev\"",
-    "build": "cd frontend && npm install && npm run build && rm -rf ../dist && mv dist ../dist",
+    "dev": "concurrently -n be,fe -c blue,green \"venv\\Scripts\\python run_backend.py\" \"cd frontend && npm run dev\"",
+    "build": "cd frontend && npm install && npm run build",
     "install": "cd frontend && npm install"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "concurrently": "^9.2.1"
   }
 }
