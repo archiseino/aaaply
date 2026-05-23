@@ -1,0 +1,12 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["api/tests"]
+python_files = ["test_*.py"]
+
+[tool.coverage.run]
+source = ["api"]
+omit = ["api/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 70
