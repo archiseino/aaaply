@@ -1,5 +1,9 @@
 import uvicorn
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  # Load environment variables from .env file
+
 
 if __name__ == "__main__":
     # Ensure the environment knows we are running locally

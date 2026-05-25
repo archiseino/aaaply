@@ -1,5 +1,8 @@
 import os
+import re
+from datetime import datetime
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
@@ -10,8 +13,12 @@ from .models import (
     ReviseEmailRequest,
     ExtractTextRequest,
     ShowCVRequest,
+    SyncAppendRequest,
+    SyncUpdateRequest,
+    SyncDeleteRequest,
+    SyncPutRequest,
 )
-from .services import ai_service, supabase_service, scraper_service
+from .services import ai_service, supabase_service, scraper_service, sheets_service
 
 import os
 import shutil
@@ -488,6 +495,160 @@ async def trigger_scrape_all(request: Request):
     except Exception as e:
         logger.error(f"trigger_scrape_all error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+_ID_MONTH = {
+    "jan": "01", "feb": "02", "mar": "03", "apr": "04", "mei": "05", "jun": "06",
+    "jul": "07", "agu": "08", "sep": "09", "okt": "10", "nov": "11", "des": "12",
+}
+
+def _normalize_date(s: str) -> str:
+    stripped = s.strip()
+    if not stripped:
+        return ""
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", stripped):
+        return stripped
+    m = re.match(r"^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$", stripped)
+    if m:
+        day, month_name, year = m.group(1), m.group(2).lower(), m.group(3)
+        month_num = _ID_MONTH.get(month_name)
+        if month_num:
+            return f"{year}-{month_num}-{int(day):02d}"
+    try:
+        dt = datetime.strptime(stripped, "%d/%m/%Y")
+        return dt.strftime("%Y-%m-%d")
+    except ValueError:
+        pass
+    try:
+        dt = datetime.strptime(stripped, "%m/%d/%Y")
+        return dt.strftime("%Y-%m-%d")
+    except ValueError:
+        pass
+    return stripped
+
+@app.post("/api/applications/sync")
+async def sync_append(req: SyncAppendRequest):
+    try:
+        existing = await sheets_service.read_all_rows(req.sheet_id, req.start_cell)
+        next_no = len(existing) + 1
+        row = [
+            str(next_no),   # B: No.
+            req.company,    # C: Nama Perusahaan
+            req.job_title,  # D: Posisi
+            req.location,   # E: Lokasi
+            req.date_applied[:10] if req.date_applied else "",  # F: Tanggal Melamar
+            req.method,     # G: Melamar Lewat
+            "",             # H: Status Lamaran — formula col
+            req.status,     # I: Hasil (Applied/No Response/Interviewing/Approve/Decline)
+            req.notes,      # J: Catatan
+        ]
+        result = await sheets_service.append_row(req.sheet_id, req.start_cell, row)
+        if result is None:
+            raise HTTPException(status_code=502, detail="Gagal menyimpan ke Google Sheets")
+        return {"status": "ok", "rows_updated": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"sync_append error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/applications/sync")
+async def sync_read(sheet_id: str, start_cell: str = "B7"):
+    try:
+        rows = await sheets_service.read_all_rows(sheet_id, start_cell)
+        from .services.sheets_service import _parse_start_cell
+        col_idx, start_row = _parse_start_cell(start_cell)
+        apps = []
+        for i, row in enumerate(rows):
+            if not row or not any(cell.strip() for cell in row):
+                continue
+            raw_status = row[7] if len(row) > 7 else ""
+            apps.append({
+                "row_index": i + start_row,
+                "company": row[1] if len(row) > 1 else "",
+                "job_title": row[2] if len(row) > 2 else "",
+                "location": row[3] if len(row) > 3 else "",
+                "date_applied": _normalize_date(row[4]) if len(row) > 4 else "",
+                "method": row[5] if len(row) > 5 else "",
+                "status": raw_status or "Applied",
+                "notes": row[8] if len(row) > 8 else "",
+            })
+        return {"applications": apps}
+    except Exception as e:
+        logger.error(f"sync_read error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/api/applications/sync")
+async def sync_update(req: SyncUpdateRequest):
+    try:
+        from .services.sheets_service import _parse_start_cell
+        col_idx, start_row = _parse_start_cell(req.start_cell)
+        existing = await sheets_service.read_all_rows(req.sheet_id, req.start_cell)
+        data_idx = req.row_index - start_row
+        if data_idx < 0 or data_idx >= len(existing):
+            raise HTTPException(status_code=404, detail="Row not found")
+        row = existing[data_idx]
+        while len(row) < 9: row.append("")
+        # Our 9-col array: [B, C, D, E, F, G, H, I, J]
+        #                    0   1  2  3  4  5  6  7  8
+        # Columns: blank, company, title, loc, date, method, H-formula, hasil, notes
+        if req.status:
+            row[7] = req.status  # I: Hasil
+        if req.notes is not None:
+            row[8] = req.notes  # J: Catatan
+        ok = await sheets_service.update_row(req.sheet_id, req.start_cell, req.row_index, row)
+        if not ok:
+            raise HTTPException(status_code=502, detail="Gagal mengupdate Google Sheets")
+        return {"status": "ok"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"sync_update error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/applications/sync")
+async def sync_delete(req: SyncDeleteRequest):
+    try:
+        ok = await sheets_service.delete_row(req.sheet_id, req.row_index, req.start_cell)
+        if not ok:
+            raise HTTPException(status_code=502, detail="Gagal menghapus dari Google Sheets")
+        return {"status": "ok"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"sync_delete error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/applications/sync")
+async def sync_put(req: SyncPutRequest):
+    try:
+        rows = []
+        for i, app in enumerate(req.applications):
+            rows.append([
+                str(i + 1),        # B: No.
+                app.company,       # C: Nama Perusahaan
+                app.job_title,     # D: Posisi
+                app.location,      # E: Lokasi
+                app.date_applied[:10] if app.date_applied else "",  # F: Tanggal Melamar
+                app.method,        # G: Melamar Lewat
+                "",                # H: Status Lamaran — formula col
+                app.status,        # I: Hasil
+                app.notes,         # J: Catatan
+            ])
+        ok = await sheets_service.replace_all_rows(req.sheet_id, req.start_cell, rows)
+        if not ok:
+            raise HTTPException(status_code=502, detail="Gagal menulis ke Google Sheets")
+        return {"status": "ok", "rows_written": len(rows)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"sync_put error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/jobs/cleanup")
 async def cleanup_old_jobs():

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Filter, ChevronDown } from 'lucide-react';
 
-type ApplicationStatus = 'All' | 'Sent' | 'Interview' | 'Rejected' | 'Accepted';
+type ApplicationStatus = 'All' | 'Applied' | 'No Response' | 'Interviewing' | 'Approve' | 'Decline';
 
 interface StatusFilterProps {
   currentStatus: ApplicationStatus;
@@ -9,7 +9,7 @@ interface StatusFilterProps {
 }
 
 const StatusFilter: React.FC<StatusFilterProps> = ({ currentStatus, onStatusChange }) => {
-  const statuses: ApplicationStatus[] = ['All', 'Sent', 'Interview', 'Rejected', 'Accepted'];
+  const statuses: ApplicationStatus[] = ['All', 'Applied', 'No Response', 'Interviewing', 'Approve', 'Decline'];
 
   return (
     <div className="relative group min-w-[140px]">
