@@ -554,10 +554,30 @@ function App() {
     setActiveTab('apply');
   };
 
-  const handleUpdateStatus = (id: string, newStatus: JobApplication['status']) => {
-    setApplications(prev => 
+  const handleUpdateStatus = async (id: string, newStatus: JobApplication['status']) => {
+    const prev = applications.find(a => a.id === id);
+    const prevStatus = prev?.status;
+
+    setApplications(prev =>
       prev.map(app => app.id === id ? { ...app, status: newStatus } : app)
     );
+
+    if (prev?.sheetRowIndex) {
+      const { sheetId: sid, startCell: sc } = getSheetCfg();
+      if (sid) {
+        const { success, error } = await syncUpdate(sid, sc, prev.sheetRowIndex, {
+          status: newStatus,
+        });
+        if (!success) {
+          setApplications(p =>
+            p.map(app => app.id === id ? { ...app, status: prevStatus || 'Applied' } : app)
+          );
+          notify("Gagal sync ke Google Sheets: " + (error || "Unknown"), "error");
+        } else {
+          notify("Status tersimpan ke Google Sheets ✅", "success");
+        }
+      }
+    }
   };
 
   const handleDeleteApplication = (id: string) => {
