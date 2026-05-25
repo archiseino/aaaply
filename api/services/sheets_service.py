@@ -123,15 +123,22 @@ class SheetsService:
             logger.error(f"update_row error: {e}")
             return False
 
+    async def _get_sheet_id(self, spreadsheet_id: str) -> int:
+        meta = self._get_client().spreadsheets().get(
+            spreadsheetId=spreadsheet_id
+        ).execute()
+        return meta["sheets"][0]["properties"]["sheetId"]
+
     async def delete_row(self, spreadsheet_id: str, sheet_row: int, start_cell: str = "B7") -> bool:
         if not self._is_ready():
             return False
         try:
             client = self._get_client()
+            sheet_id = await self._get_sheet_id(spreadsheet_id)
             requests = [{
                 "deleteDimension": {
                     "range": {
-                        "sheetId": 0,
+                        "sheetId": sheet_id,
                         "dimension": "ROWS",
                         "startIndex": sheet_row - 1,
                         "endIndex": sheet_row
