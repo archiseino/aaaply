@@ -34,11 +34,11 @@ export function CVPanel({
   textInput,
 }: CVPanelProps) {
   return (
-    <div className="w-full md:w-1/2 p-6 flex flex-col overflow-y-visible md:overflow-y-auto relative shrink-0 md:shrink pb-24 md:pb-6">
-      <AnimatePresence mode="wait">
+    <div className='w-full md:w-1/2 p-6 flex flex-col overflow-y-visible md:overflow-y-auto relative shrink-0 md:shrink pb-24 md:pb-6'>
+      <AnimatePresence mode='wait'>
         {result ? (
           <ResultForm
-            key="result-form"
+            key='result-form'
             data={result}
             cvHistory={cvHistory}
             selectedCV={selectedCV}
@@ -50,42 +50,77 @@ export function CVPanel({
           />
         ) : (
           <motion.div
-            key="cv-section"
+            key='cv-section'
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex-1 flex flex-col h-full"
+            className='flex-1 flex flex-col h-full'
           >
-            <div className="relative p-1 rounded-lg shrink-0 mb-6 flex" style={{ backgroundColor: 'var(--bg-elevated)' }}>
+            <div
+              className='relative p-1 rounded-lg shrink-0 mb-6 flex'
+              style={{ backgroundColor: 'var(--bg-elevated)' }}
+            >
               <select
                 value={selectedCV}
                 onChange={(e) => onCVChange(e.target.value)}
-                className="w-full py-2 text-sm font-semibold rounded-md text-center cursor-pointer appearance-none outline-none pr-8"
-                style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
+                className='w-full py-2 text-sm font-semibold rounded-md text-center cursor-pointer appearance-none outline-none pr-8'
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  color: 'var(--text-primary)',
+                }}
               >
-                <option value="">Pilih Curriculum Vitae (CV)</option>
-                {cvHistory.map(cv => (
-                  <option key={cv.id} value={cv.id}>{cv.name}</option>
+                <option value=''>Pilih Curriculum Vitae (CV)</option>
+                {cvHistory.map((cv) => (
+                  <option key={cv.id} value={cv.id}>
+                    {cv.name}
+                  </option>
                 ))}
               </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }}>
+              <div
+                className='absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none'
+                style={{ color: 'var(--text-muted)' }}
+              >
                 <ChevronDown size={16} />
               </div>
             </div>
 
-            <div className="flex flex-col h-full">
-              <h2 className="text-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Upload Curriculum Vitae (CV)</h2>
-              <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>Lengkapi dengan CV Anda agar AI bisa mempersonalisasi lamaran secara otomatis.</p>
+            <div className='flex flex-col h-full'>
+              <h2
+                className='text-lg font-bold mb-2'
+                style={{ color: 'var(--text-primary)' }}
+              >
+                Upload Curriculum Vitae (CV)
+              </h2>
+              <p
+                className='text-sm mb-6'
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Lengkapi dengan CV Anda agar AI bisa mempersonalisasi lamaran
+                secara otomatis.
+              </p>
 
-              <div className="flex flex-col">
-                <Dropzone onUpload={onCVUpload} title="Drag & drop CV (PDF) di sini" id="cv-upload-right" notify={notify} />
+              <div className='flex flex-col'>
+                <Dropzone
+                  onUpload={onCVUpload}
+                  title='Drag & drop CV (PDF) di sini'
+                  id='cv-upload-right'
+                  notify={notify}
+                />
               </div>
 
               {!file && !textInput.trim() && (
-                <div className="mt-auto pt-8 flex flex-col items-center text-center opacity-30">
-                  <Sparkles size={32} className="mb-2" style={{ color: 'var(--text-muted)' }} />
-                  <p className="text-xs max-w-[200px]" style={{ color: 'var(--text-muted)' }}>
-                    Setelah CV dipilih dan poster diunggah, AI akan otomatis bekerja.
+                <div className='mt-auto pt-8 flex flex-col items-center text-center opacity-30'>
+                  <Sparkles
+                    size={32}
+                    className='mb-2'
+                    style={{ color: 'var(--status-blue)' }}
+                  />
+                  <p
+                    className='text-xs max-w-[200px]'
+                    style={{ color: 'var(--status-blue)' }}
+                  >
+                    Setelah CV dipilih dan poster diunggah, AI akan otomatis
+                    bekerja.
                   </p>
                 </div>
               )}
