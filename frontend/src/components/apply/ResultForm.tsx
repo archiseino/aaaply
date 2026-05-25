@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Type, Send, FileEdit, Building2, Briefcase, Sparkles, LayoutTemplate, X, Paperclip, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { ConfirmModal } from './ConfirmModal';
+import { ConfirmModal } from '../ui/ConfirmModal';
 
 interface ResultFormProps {
   data: {

@@ -30,7 +30,7 @@ import {
   XAxis,
 } from 'recharts';
 
-import { ConfirmModal } from './ConfirmModal';
+import { ConfirmModal } from '../ui/ConfirmModal';
 import ApplicationSearch from './ApplicationSearch';
 import StatusFilter from './StatusFilter';
 

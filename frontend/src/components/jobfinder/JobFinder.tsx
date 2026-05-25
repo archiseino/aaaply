@@ -3,7 +3,7 @@ import { Search, MapPin, Briefcase, Mail, ExternalLink, RefreshCw, ChevronRight,
 import { motion } from 'framer-motion';
 import axios from 'axios';
 
-import { ConfirmModal } from './ConfirmModal';
+import { ConfirmModal } from '../ui/ConfirmModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
