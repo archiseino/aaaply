@@ -58,6 +58,7 @@ interface TrackerProps {
   sheetId?: string;
   onSyncFromSheets?: () => Promise<JobApplication[]>;
   onSyncToSheets?: () => Promise<{ success: boolean; errors?: string[] }>;
+  onSyncFullPush?: () => Promise<boolean>;
   lastSyncedAt?: string;
 }
 
@@ -141,19 +142,22 @@ const Tracker: React.FC<TrackerProps> = ({
   sheetId,
   onSyncFromSheets,
   onSyncToSheets,
+  onSyncFullPush,
   lastSyncedAt,
 }) => {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     targetId: string | null;
-  }>({ isOpen: false, targetId: null });
+    isSynced: boolean;
+  }>({ isOpen: false, targetId: null, isSynced: false });
+  const [editConfirmApp, setEditConfirmApp] = useState<JobApplication | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newApp, setNewApp] = useState<Partial<JobApplication>>({
     status: 'Applied',
     dateApplied: new Date().toISOString(),
   });
-  const [isSyncing, setIsSyncing] = useState<'from' | 'to' | null>(null);
+  const [isSyncing, setIsSyncing] = useState<'from' | 'to' | 'push' | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -447,6 +451,29 @@ const Tracker: React.FC<TrackerProps> = ({
                   )}
                   <span className='hidden sm:inline'>To Sheets</span>
                 </button>
+                <button
+                  onClick={async () => {
+                    if (!onSyncFullPush || isSyncing) return;
+                    setIsSyncing('push');
+                    await onSyncFullPush();
+                    setIsSyncing(null);
+                  }}
+                  disabled={isSyncing !== null}
+                  className='flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 active:scale-95 hover:opacity-90 disabled:opacity-50'
+                  style={{
+                    backgroundColor: 'var(--bg-elevated)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid var(--border)',
+                  }}
+                  title='Push all data to Sheets'
+                >
+                  {isSyncing === 'push' ? (
+                    <RefreshCw size={14} className='animate-spin' />
+                  ) : (
+                    <RefreshCw size={14} />
+                  )}
+                  <span className='hidden sm:inline'>Push All</span>
+                </button>
                 {lastSyncedAt && (
                   <span
                     className='text-[10px] hidden lg:inline'
@@ -670,7 +697,10 @@ const Tracker: React.FC<TrackerProps> = ({
                           )}
                         </div>
                         <button
-                          onClick={() => onEdit(app)}
+                          onClick={() => {
+                            if (app.sheetRowIndex) setEditConfirmApp(app);
+                            else onEdit(app);
+                          }}
                           className='p-1.5 rounded-md transition-colors'
                           style={{ color: 'var(--text-muted)' }}
                           title='Edit & Resend'
@@ -679,7 +709,7 @@ const Tracker: React.FC<TrackerProps> = ({
                         </button>
                         <button
                           onClick={() =>
-                            setConfirmModal({ isOpen: true, targetId: app.id })
+                            setConfirmModal({ isOpen: true, targetId: app.id, isSynced: !!app.sheetRowIndex })
                           }
                           className='p-1.5 rounded-md transition-colors text-rose-500/60 hover:text-rose-500'
                           title='Hapus Lamaran'
@@ -830,7 +860,10 @@ const Tracker: React.FC<TrackerProps> = ({
 
                 <div className='flex justify-between items-center gap-3'>
                   <button
-                    onClick={() => onEdit(app)}
+                    onClick={() => {
+                      if (app.sheetRowIndex) setEditConfirmApp(app);
+                      else onEdit(app);
+                    }}
                     className='flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-colors'
                     style={{
                       backgroundColor: 'var(--bg-elevated)',
@@ -842,7 +875,7 @@ const Tracker: React.FC<TrackerProps> = ({
                   </button>
                   <button
                     onClick={() =>
-                      setConfirmModal({ isOpen: true, targetId: app.id })
+                      setConfirmModal({ isOpen: true, targetId: app.id, isSynced: !!app.sheetRowIndex })
                     }
                     className='p-2 rounded-lg transition-colors text-rose-500/60 hover:text-rose-500'
                   >
@@ -858,12 +891,28 @@ const Tracker: React.FC<TrackerProps> = ({
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title='Hapus Lamaran'
-        message='Yakin ingin menghapus lamaran ini? Data tidak dapat dikembalikan.'
+        message={confirmModal.isSynced
+          ? 'Lamaran ini berasal dari Google Sheets. Data akan dihapus dari sheet juga. Lanjutkan?'
+          : 'Yakin ingin menghapus lamaran ini? Data tidak dapat dikembalikan.'}
         onConfirm={() => {
           if (confirmModal.targetId) onDelete(confirmModal.targetId);
-          setConfirmModal({ isOpen: false, targetId: null });
+          setConfirmModal({ isOpen: false, targetId: null, isSynced: false });
         }}
-        onCancel={() => setConfirmModal({ isOpen: false, targetId: null })}
+        onCancel={() => setConfirmModal({ isOpen: false, targetId: null, isSynced: false })}
+        confirmText='Hapus'
+      />
+
+      <ConfirmModal
+        isOpen={editConfirmApp !== null}
+        title='Edit Lamaran'
+        message='Lamaran ini berasal dari Google Sheets. Perubahan yang disimpan hanya akan tersimpan di aplikasi. Untuk menyinkronkan kembali ke sheet, perbarui status setelah selesai.'
+        onConfirm={() => {
+          if (editConfirmApp) onEdit(editConfirmApp);
+          setEditConfirmApp(null);
+        }}
+        onCancel={() => setEditConfirmApp(null)}
+        confirmText='Lanjutkan'
+        cancelText='Batal'
       />
 
       {/* Manual Add Modal */}

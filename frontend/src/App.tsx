@@ -15,7 +15,7 @@ import Toast, { type ToastType } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import JobFinder from './components/JobFinder';
 import { Briefcase } from 'lucide-react';
-import { syncFromSheets, syncAppend, syncUpdate, syncDelete } from './utils/sheetsSync';
+import { syncFromSheets, syncAppend, syncUpdate, syncDelete, syncFullPush } from './utils/sheetsSync';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -685,6 +685,48 @@ function App() {
     return { success: errors.length === 0, errors };
   };
 
+  const handleSyncFullPush = async (): Promise<boolean> => {
+    const { sheetId: sid, startCell: sc } = getSheetCfg();
+    if (!sid) {
+      notify("Sheet ID belum dikonfigurasi. Isi di Pengaturan.", "warning");
+      return false;
+    }
+    const apps = applications.map(a => ({
+      company: a.companyName,
+      job_title: a.jobTitle,
+      location: a.location,
+      date_applied: a.dateApplied,
+      method: a.method || (a.hrEmail !== '-' ? `Email: ${a.hrEmail}` : ''),
+      status: a.status,
+      notes: '',
+    }));
+    const { success, error } = await syncFullPush(sid, sc, apps);
+    if (!success) {
+      notify("Gagal push ke Google Sheets: " + (error || "Unknown"), "error");
+      return false;
+    }
+    const { apps: fresh } = await syncFromSheets(sid, sc);
+    if (fresh.length > 0) {
+      const now = new Date().toISOString();
+      const reloaded: JobApplication[] = fresh.map((s, idx) => ({
+        id: `sheet-${s.row_index || idx}-${Date.now()}`,
+        companyName: s.company,
+        jobTitle: s.job_title,
+        hrEmail: '',
+        location: s.location || '',
+        method: s.method || '',
+        dateApplied: s.date_applied || now,
+        status: (s.status as JobApplication['status']) || 'Applied',
+        sheetRowIndex: s.row_index,
+      }));
+      setApplications(reloaded);
+    }
+    const nowStr = new Date().toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    setLastSyncedAt(`Push: ${nowStr}`);
+    notify(`${apps.length} aplikasi berhasil push ke Google Sheets ✅`, "success");
+    return true;
+  };
+
   const isImage = file?.type.startsWith('image/');
   const fileUrl = file ? URL.createObjectURL(file) : null;
 
@@ -1040,6 +1082,7 @@ function App() {
                 sheetId={sheetId}
                 onSyncFromSheets={handleSyncFromSheets}
                 onSyncToSheets={handleSyncToSheets}
+                onSyncFullPush={handleSyncFullPush}
                 lastSyncedAt={lastSyncedAt}
               />
             </motion.div>

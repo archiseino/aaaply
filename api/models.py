@@ -63,3 +63,19 @@ class SyncDeleteRequest(BaseModel):
     sheet_id: str
     start_cell: str = "B7"
     row_index: int
+
+
+class SyncPutAppItem(BaseModel):
+    company: str = ""
+    job_title: str = ""
+    location: str = ""
+    date_applied: str = ""
+    method: str = ""
+    status: str = "Applied"
+    notes: str = ""
+
+
+class SyncPutRequest(BaseModel):
+    sheet_id: str
+    start_cell: str = "B7"
+    applications: list[SyncPutAppItem] = []

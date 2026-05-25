@@ -16,6 +16,7 @@ from .models import (
     SyncAppendRequest,
     SyncUpdateRequest,
     SyncDeleteRequest,
+    SyncPutRequest,
 )
 from .services import ai_service, supabase_service, scraper_service, sheets_service
 
@@ -619,6 +620,33 @@ async def sync_delete(req: SyncDeleteRequest):
         raise
     except Exception as e:
         logger.error(f"sync_delete error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/applications/sync")
+async def sync_put(req: SyncPutRequest):
+    try:
+        rows = []
+        for i, app in enumerate(req.applications):
+            rows.append([
+                str(i + 1),        # B: No.
+                app.company,       # C: Nama Perusahaan
+                app.job_title,     # D: Posisi
+                app.location,      # E: Lokasi
+                app.date_applied[:10] if app.date_applied else "",  # F: Tanggal Melamar
+                app.method,        # G: Melamar Lewat
+                "",                # H: Status Lamaran — formula col
+                app.status,        # I: Hasil
+                app.notes,         # J: Catatan
+            ])
+        ok = await sheets_service.replace_all_rows(req.sheet_id, req.start_cell, rows)
+        if not ok:
+            raise HTTPException(status_code=502, detail="Gagal menulis ke Google Sheets")
+        return {"status": "ok", "rows_written": len(rows)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"sync_put error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

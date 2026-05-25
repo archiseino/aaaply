@@ -148,4 +148,28 @@ class SheetsService:
             return False
 
 
+    async def replace_all_rows(self, spreadsheet_id: str, start_cell: str, rows: list[list]) -> bool:
+        """Clear existing data range and write all rows in one batch."""
+        if not self._is_ready():
+            return False
+        range_str = self._make_range(spreadsheet_id, start_cell, 9)
+        try:
+            client = self._get_client()
+            client.spreadsheets().values().clear(
+                spreadsheetId=spreadsheet_id, range=range_str, body={}
+            ).execute()
+            if not rows:
+                return True
+            client.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id,
+                range=range_str,
+                valueInputOption="USER_ENTERED",
+                body={"values": rows}
+            ).execute()
+            return True
+        except HttpError as e:
+            logger.error(f"replace_all_rows error: {e}")
+            return False
+
+
 sheets_service = SheetsService()
