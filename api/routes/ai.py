@@ -14,7 +14,7 @@ from fastapi.responses import HTMLResponse
 from api.models import ReviseEmailRequest
 from api.services import ai_service
 from api.core.config import (
-    MAX_CONTEXT_CHARS, MAX_CV_RAW_CHARS, MAX_CV_SUMMARY_CHARS,
+    MAX_CONTEXT_CHARS, MAX_CV_RAW_CHARS, MAX_CV_SUMMARY_CHARS, MAX_REVISE_BODY_CHARS,
     MAX_GENERATE_PER_HOUR, MAX_EXTRACT_PER_HOUR, CACHE_TTL_CV_SUMMARY,
 )
 from api.core.cache import cache_get, cache_set, make_cv_summary_key, make_generate_key
