@@ -538,9 +538,10 @@ async def sync_append(req: SyncAppendRequest):
             req.location,   # E: Lokasi
             req.date_applied[:10] if req.date_applied else "",  # F: Tanggal Melamar
             req.method,     # G: Melamar Lewat
-            "",             # H: Status Lamaran — formula col
-            req.status,     # I: Hasil (Applied/No Response/Interviewing/Approve/Decline)
-            req.notes,      # J: Catatan
+            req.hr_email,   # H: Email Company
+            "",             # I: Status Lamaran — formula col
+            req.status,     # J: Hasil (Applied/No Response/Interviewing/Approve/Decline)
+            req.notes,      # K: Catatan
         ]
         result = await sheets_service.append_row(req.sheet_id, req.start_cell, row)
         if result is None:
@@ -563,16 +564,23 @@ async def sync_read(sheet_id: str, start_cell: str = "B7"):
         for i, row in enumerate(rows):
             if not row or not any(cell.strip() for cell in row):
                 continue
-            raw_status = row[7] if len(row) > 7 else ""
+            raw_method = row[5] if len(row) > 5 else ""
+            raw_email = row[6] if len(row) > 6 else ""
+            # Backward compat: if email col is empty but method starts with "Email: ", extract it
+            if not raw_email and raw_method.startswith("Email:"):
+                raw_email = raw_method.replace("Email:", "", 1).strip()
+                raw_method = "Email"
+            raw_status = row[8] if len(row) > 8 else ""
             apps.append({
                 "row_index": i + start_row,
                 "company": row[1] if len(row) > 1 else "",
                 "job_title": row[2] if len(row) > 2 else "",
                 "location": row[3] if len(row) > 3 else "",
                 "date_applied": _normalize_date(row[4]) if len(row) > 4 else "",
-                "method": row[5] if len(row) > 5 else "",
+                "method": raw_method,
+                "email": raw_email,
                 "status": raw_status or "Applied",
-                "notes": row[8] if len(row) > 8 else "",
+                "notes": row[9] if len(row) > 9 else "",
             })
         return {"applications": apps}
     except Exception as e:
@@ -590,14 +598,26 @@ async def sync_update(req: SyncUpdateRequest):
         if data_idx < 0 or data_idx >= len(existing):
             raise HTTPException(status_code=404, detail="Row not found")
         row = existing[data_idx]
-        while len(row) < 9: row.append("")
-        # Our 9-col array: [B, C, D, E, F, G, H, I, J]
-        #                    0   1  2  3  4  5  6  7  8
-        # Columns: blank, company, title, loc, date, method, H-formula, hasil, notes
+        while len(row) < 10: row.append("")
+        # Our 10-col array: [B, C, D, E, F, G, H, I, J, K]
+        #                    0   1  2  3  4  5  6  7  8  9
+        # Columns: blank, company, title, loc, date, method, email, formula, hasil, notes
+        if req.company is not None:
+            row[1] = req.company
+        if req.job_title is not None:
+            row[2] = req.job_title
+        if req.location is not None:
+            row[3] = req.location
+        if req.date_applied is not None:
+            row[4] = req.date_applied[:10]
+        if req.method is not None:
+            row[5] = req.method
+        if req.hr_email is not None:
+            row[6] = req.hr_email
         if req.status:
-            row[7] = req.status  # I: Hasil
+            row[8] = req.status  # J: Hasil
         if req.notes is not None:
-            row[8] = req.notes  # J: Catatan
+            row[9] = req.notes  # K: Catatan
         ok = await sheets_service.update_row(req.sheet_id, req.start_cell, req.row_index, row)
         if not ok:
             raise HTTPException(status_code=502, detail="Gagal mengupdate Google Sheets")
@@ -635,9 +655,10 @@ async def sync_put(req: SyncPutRequest):
                 app.location,      # E: Lokasi
                 app.date_applied[:10] if app.date_applied else "",  # F: Tanggal Melamar
                 app.method,        # G: Melamar Lewat
-                "",                # H: Status Lamaran — formula col
-                app.status,        # I: Hasil
-                app.notes,         # J: Catatan
+                app.hr_email,      # H: Email Company
+                "",                # I: Status Lamaran — formula col
+                app.status,        # J: Hasil
+                app.notes,         # K: Catatan
             ])
         ok = await sheets_service.replace_all_rows(req.sheet_id, req.start_cell, rows)
         if not ok:
