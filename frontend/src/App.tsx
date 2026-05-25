@@ -656,6 +656,22 @@ function App() {
   };
 
   const handleSyncFromSheets = async (): Promise<JobApplication[]> => {
+    const { sheetId: sid, startCell: sc } = getSheetCfg();
+    if (!sid) {
+      notify("Sheet ID belum dikonfigurasi. Isi di Pengaturan.", "warning");
+      return [];
+    }
+    const { apps, error } = await syncFromSheets(sid, sc);
+    if (error) {
+      notify("Sync error: " + error, "error");
+      return [];
+    }
+    _reloadFromSheet(apps);
+    notify(`${apps.length} aplikasi dimuat dari Google Sheets`, "success");
+    return apps;
+  };
+
+  const handleAddManualApplication = async (newApp: JobApplication) => {
     setApplications(prev => [newApp, ...prev]);
     notify("Lamaran manual berhasil ditambahkan!", "success");
     const { sheetId: sid, startCell: sc } = getSheetCfg();
@@ -672,95 +688,6 @@ function App() {
     if (!success) return;
     const { apps } = await syncFromSheets(sid, sc);
     _reloadFromSheet(apps);
-  };
-
-  const handleSyncToSheets = async (): Promise<{success: boolean; errors?: string[]}> => {
-    const { sheetId: sid, startCell: sc } = getSheetCfg();
-    if (!sid) {
-      notify("Sheet ID belum dikonfigurasi. Isi di Pengaturan.", "warning");
-      return { success: false, errors: ['No Sheet ID'] };
-    }
-    const errors: string[] = [];
-    let synced = 0;
-    const toAppend = applications.filter(a => !a.sheetRowIndex);
-    for (const app of toAppend) {
-      const { success, error } = await syncAppend(sid, sc, {
-        company: app.companyName,
-        job_title: app.jobTitle,
-        location: app.location,
-        date_applied: app.dateApplied,
-        method: app.method || (app.hrEmail !== '-' ? `Email: ${app.hrEmail}` : ''),
-        status: app.status,
-        notes: '',
-      });
-      if (success) synced++;
-      else errors.push(`${app.companyName}: ${error}`);
-    }
-    if (synced > 0) {
-      const { apps } = await syncFromSheets(sid, sc);
-      if (apps.length > 0) {
-        const now = new Date().toISOString();
-        const reloaded: JobApplication[] = apps.map((s, idx) => ({
-          id: `sheet-${s.row_index || idx}-${Date.now()}`,
-          companyName: s.company,
-          jobTitle: s.job_title,
-          hrEmail: '',
-          location: s.location || '',
-          method: s.method || '',
-          dateApplied: s.date_applied || now,
-          status: (s.status as JobApplication['status']) || 'Applied',
-          sheetRowIndex: s.row_index,
-        }));
-        setApplications(reloaded);
-      }
-    }
-    const nowStr = new Date().toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    setLastSyncedAt(`Sync: ${nowStr}`);
-    if (errors.length === 0) notify(`${synced} aplikasi baru tersimpan ke Google Sheets ✅`, "success");
-    else notify(`${synced} tersimpan, ${errors.length} gagal`, "warning");
-    return { success: errors.length === 0, errors };
-  };
-
-  const handleSyncFullPush = async (): Promise<boolean> => {
-    const { sheetId: sid, startCell: sc } = getSheetCfg();
-    if (!sid) {
-      notify("Sheet ID belum dikonfigurasi. Isi di Pengaturan.", "warning");
-      return false;
-    }
-    const apps = applications.map(a => ({
-      company: a.companyName,
-      job_title: a.jobTitle,
-      location: a.location,
-      date_applied: a.dateApplied,
-      method: a.method || (a.hrEmail !== '-' ? `Email: ${a.hrEmail}` : ''),
-      status: a.status,
-      notes: '',
-    }));
-    const { success, error } = await syncFullPush(sid, sc, apps);
-    if (!success) {
-      notify("Gagal push ke Google Sheets: " + (error || "Unknown"), "error");
-      return false;
-    }
-    const { apps: fresh } = await syncFromSheets(sid, sc);
-    if (fresh.length > 0) {
-      const now = new Date().toISOString();
-      const reloaded: JobApplication[] = fresh.map((s, idx) => ({
-        id: `sheet-${s.row_index || idx}-${Date.now()}`,
-        companyName: s.company,
-        jobTitle: s.job_title,
-        hrEmail: '',
-        location: s.location || '',
-        method: s.method || '',
-        dateApplied: s.date_applied || now,
-        status: (s.status as JobApplication['status']) || 'Applied',
-        sheetRowIndex: s.row_index,
-      }));
-      setApplications(reloaded);
-    }
-    const nowStr = new Date().toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    setLastSyncedAt(`Push: ${nowStr}`);
-    notify(`${apps.length} aplikasi berhasil push ke Google Sheets ✅`, "success");
-    return true;
   };
 
   const isImage = file?.type.startsWith('image/');
