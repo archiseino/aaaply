@@ -16,7 +16,6 @@ class ReviseEmailRequest(BaseModel):
 class ExtractTextRequest(BaseModel):
     text: str
 
-
 class ScrapedJob(BaseModel):
     id: Optional[str] = None
     title: str
@@ -31,7 +30,6 @@ class ScrapedJob(BaseModel):
     posted_at: Optional[str] = None
     scraped_at: Optional[str] = None
 
-
 class SyncAppendRequest(BaseModel):
     sheet_id: str
     start_cell: str = "B7"
@@ -44,7 +42,6 @@ class SyncAppendRequest(BaseModel):
     hr_email: str = ""
     status: str = "Applied"
     notes: str = ""
-
 
 class SyncUpdateRequest(BaseModel):
     sheet_id: str
@@ -59,12 +56,10 @@ class SyncUpdateRequest(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
 
-
 class SyncDeleteRequest(BaseModel):
     sheet_id: str
     start_cell: str = "B7"
     row_index: int
-
 
 class SyncPutAppItem(BaseModel):
     company: str = ""
@@ -75,7 +70,6 @@ class SyncPutAppItem(BaseModel):
     hr_email: str = ""
     status: str = "Applied"
     notes: str = ""
-
 
 class SyncPutRequest(BaseModel):
     sheet_id: str

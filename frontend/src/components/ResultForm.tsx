@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Mail, Type, Send, FileEdit, Building2, Briefcase, Sparkles, LayoutTemplate, X, Paperclip, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { rotateApiKey } from '../utils/apiManager';
 import { ConfirmModal } from './ConfirmModal';
 
 interface ResultFormProps {
@@ -127,18 +126,6 @@ const ResultForm: React.FC<ResultFormProps> = ({ data, cvHistory, selectedCV, on
       setRevisionPrompt('');
     } catch (error: any) {
       console.error(error);
-
-      // AUTO-ROTATION LOGIC
-      if (error.response?.status === 429 || (error.response?.data?.detail && error.response.data.detail.toLowerCase().includes('quota'))) {
-        const currentKey = localStorage.getItem('GEMINI_API_KEY') || '';
-        const rotated = rotateApiKey(currentKey);
-        if (rotated) {
-          if (notify) notify(`Kuota habis. Otomatis beralih ke ${rotated.nextName}...`, "info");
-          setTimeout(() => handleRevisionSubmit(e), 1000);
-          return;
-        }
-      }
-
       const msg = "Gagal merevisi email: " + (error.response?.data?.detail || error.message);
       if (notify) notify(msg, "error");
       else alert(msg);

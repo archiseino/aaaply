@@ -3,7 +3,6 @@ import { Settings, FileText, X, Image as ImageIcon, LayoutDashboard, Send as Sen
 import { useTheme } from './components/ThemeProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
-import { rotateApiKey } from './utils/apiManager';
 import { set as setDb, get as getDb } from 'idb-keyval';
 import { sendGmailWithAttachment, isGmailApiConfigured } from './utils/gmailApi';
 import { sendOutlookWithAttachment, isOutlookApiConfigured } from './utils/outlookApi';
@@ -222,19 +221,6 @@ function App() {
       }
     } catch (error: any) {
       console.error(error);
-      
-      // AUTO-ROTATION LOGIC (Error 429 = Too Many Requests / Quota Exceeded)
-      if (error.response?.status === 429 || (error.response?.data?.detail && error.response.data.detail.toLowerCase().includes('quota'))) {
-        const currentKey = localStorage.getItem('GEMINI_API_KEY') || '';
-        const rotated = rotateApiKey(currentKey);
-        if (rotated) {
-          notify(`Kuota habis. Otomatis beralih ke ${rotated.nextName}...`, "info");
-          // Re-run the analysis with the new key after a short delay
-          setTimeout(() => performAnalysis(), 1000);
-          return;
-        }
-      }
-      
       notify("Gagal menganalisis: " + (error.response?.data?.detail || error.message), "error");
     } finally {
       setIsProcessing(false);
@@ -317,7 +303,7 @@ function App() {
       }
 
       // 4. THE "HIDDEN BRIDGE"
-      const LOCAL_BRIDGE_URL = "http://localhost:8000/api/copy-to-clipboard";
+      const LOCAL_BRIDGE_URL = `${API_BASE_URL}/api/copy-to-clipboard`;
       try {
         const form = document.createElement('form');
         form.method = 'POST';
@@ -641,21 +627,35 @@ function App() {
     })));
   };
 
-  const _syncAppAndReload = async (appData: { company_name?: string; job_title?: string; hr_email?: string }) => {
+  const _syncJobAppAndReload = async (fields: {
+    company: string; job_title: string; location?: string; date_applied: string;
+    method?: string; email?: string; status: string; notes?: string;
+  }) => {
     const { sheetId: sid, startCell: sc } = getSheetCfg();
     if (!sid) return;
     const { success } = await syncAppend(sid, sc, {
-      company: appData.company_name || '',
-      job_title: appData.job_title || '',
-      method: appData.hr_email && appData.hr_email !== '-' ? 'Email' : '',
-      email: appData.hr_email && appData.hr_email !== '-' ? appData.hr_email : '',
-      status: 'Applied',
-      date_applied: new Date().toISOString(),
-      notes: '',
+      company: fields.company,
+      job_title: fields.job_title,
+      location: fields.location || '',
+      date_applied: fields.date_applied,
+      method: fields.method || '',
+      email: fields.email && fields.email !== '-' ? fields.email : '',
+      status: fields.status,
+      notes: fields.notes || '',
     });
     if (!success) return;
     const { apps } = await syncFromSheets(sid, sc);
     _reloadFromSheet(apps);
+  };
+
+  const _syncAppAndReload = async (appData: { company_name?: string; job_title?: string; hr_email?: string }) => {
+    await _syncJobAppAndReload({
+      company: appData.company_name || '',
+      job_title: appData.job_title || '',
+      date_applied: new Date().toISOString(),
+      email: appData.hr_email,
+      status: 'Applied',
+    });
   };
 
   const handleEditSave = async (app: JobApplication) => {
@@ -700,21 +700,16 @@ function App() {
   const handleAddManualApplication = async (newApp: JobApplication) => {
     setApplications(prev => [newApp, ...prev]);
     notify("Lamaran manual berhasil ditambahkan!", "success");
-    const { sheetId: sid, startCell: sc } = getSheetCfg();
-    if (!sid) return;
-    const { success } = await syncAppend(sid, sc, {
+    await _syncJobAppAndReload({
       company: newApp.companyName,
       job_title: newApp.jobTitle,
       location: newApp.location,
       date_applied: newApp.dateApplied,
-      method: newApp.method || '',
-      email: newApp.hrEmail && newApp.hrEmail !== '-' ? newApp.hrEmail : '',
+      method: newApp.method,
+      email: newApp.hrEmail,
       status: newApp.status,
-      notes: newApp.notes || '',
+      notes: newApp.notes,
     });
-    if (!success) return;
-    const { apps } = await syncFromSheets(sid, sc);
-    _reloadFromSheet(apps);
   };
 
   const isImage = file?.type.startsWith('image/');
@@ -1052,21 +1047,15 @@ function App() {
                 onApply={handleJobFinderApply}
                 onAddExternalApplication={async (app) => {
                   setApplications(prev => [app, ...prev]);
-                  const { sheetId: sid, startCell: sc } = getSheetCfg();
-                  if (!sid) return;
-                  const { success } = await syncAppend(sid, sc, {
+                  await _syncJobAppAndReload({
                     company: app.companyName,
                     job_title: app.jobTitle,
                     location: app.location,
                     date_applied: app.dateApplied,
-                    method: app.method || '',
-                    email: app.hrEmail && app.hrEmail !== '-' ? app.hrEmail : '',
+                    method: app.method,
+                    email: app.hrEmail,
                     status: app.status,
-                    notes: '',
                   });
-                  if (!success) return;
-                  const { apps } = await syncFromSheets(sid, sc);
-                  _reloadFromSheet(apps);
                 }}
                 notify={notify}
               />

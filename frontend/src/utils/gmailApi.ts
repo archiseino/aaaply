@@ -1,12 +1,4 @@
-/**
- * Gmail API Email Sender
- * 
- * Sends a Gmail email with CV attachment directly from the browser.
- * Uses Google Identity Services (GIS) for OAuth 2.0 authentication.
- * No backend required. Works on deployed web & mobile.
- * 
- * Cost: ZERO Gemini tokens. Uses Google's free Gmail API.
- */
+import { blobToBase64, textToHtml } from './shared';
 
 const GMAIL_CLIENT_ID = import.meta.env.VITE_GMAIL_CLIENT_ID || '';
 const SCOPES = 'https://www.googleapis.com/auth/gmail.compose';
@@ -97,59 +89,6 @@ function requestToken(): Promise<string> {
       reject(e);
     }
   });
-}
-
-/**
- * Convert a Blob to base64 string (without data URL prefix)
- */
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const dataUrl = reader.result as string;
-      resolve(dataUrl.split(',')[1]);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-/**
- * Smart text-to-HTML converter.
- * - Splits paragraphs on double newlines.
- * - Within a paragraph: only merges a single \n into a space if the PREVIOUS line was
- *   long (>55 chars), indicating AI soft-wrap. Short lines (greetings, signatures)
- *   are preserved as <br>.
- */
-function textToHtml(text: string): string {
-  const paragraphs = text.split(/\n\s*\n/);
-  
-  const htmlParagraphs = paragraphs.map(para => {
-    const lines = para.split('\n');
-    if (lines.length <= 1) {
-      return `<p style="margin:0 0 1em 0;line-height:1.6">${lines[0]?.trim() || ''}</p>`;
-    }
-    
-    // Smart merge: only join if previous line was long (AI soft-wrap)
-    let merged = lines[0].trim();
-    for (let i = 1; i < lines.length; i++) {
-      const prevLineLen = lines[i - 1].trim().length;
-      const currentLine = lines[i].trim();
-      if (!currentLine) continue; // skip empty
-      
-      if (prevLineLen > 55) {
-        // Previous line was long → this is a soft-wrapped continuation → join with space
-        merged += ' ' + currentLine;
-      } else {
-        // Previous line was short → intentional line break (greeting, signature) → <br>
-        merged += '<br>' + currentLine;
-      }
-    }
-    
-    return `<p style="margin:0 0 1em 0;line-height:1.6">${merged}</p>`;
-  });
-  
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222">${htmlParagraphs.join('\n')}</div>`;
 }
 
 /**
