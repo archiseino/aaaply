@@ -30,6 +30,7 @@ def _parse_start_cell(cell: str) -> tuple[int, int]:
 class SheetsService:
     def __init__(self):
         self._client = None
+        self._sheet_id_cache: dict[str, int] = {}
 
     def _get_credentials_path(self) -> Optional[str]:
         return os.environ.get("GOOGLE_SERVICE_ACCOUNT_KEY")
@@ -58,12 +59,19 @@ class SheetsService:
             result = chr(r + ord('A')) + result
         return result
 
+    def _col_letter(self, col_index: int) -> str:
+        result = ""
+        n = col_index + 1
+        while n > 0:
+            n, r = divmod(n - 1, 26)
+            result = chr(r + ord('A')) + result
+        return result
+
     def _make_range(self, spreadsheet_id: str, start_cell: str, num_cols: int) -> str:
-        """Build a range string like 'B7:J' or 'A1:D' from start_cell."""
         col_idx, row = _parse_start_cell(start_cell)
+        start_col = self._col_letter(col_idx)
         end_col = self._end_col_letter(col_idx, num_cols)
-        start_col_letter = chr(ord('A') + col_idx) if col_idx < 26 else "A"
-        return f"{start_col_letter}{row}:{end_col}"
+        return f"{start_col}{row}:{end_col}"
 
     async def read_all_rows(self, spreadsheet_id: str, start_cell: str = "B7") -> list[list[str]]:
         if not self._is_ready():
@@ -107,7 +115,7 @@ class SheetsService:
         if not self._is_ready():
             return False
         col_idx, _ = _parse_start_cell(start_cell)
-        start_col_letter = chr(ord('A') + col_idx) if col_idx < 26 else "A"
+        start_col_letter = self._col_letter(col_idx)
         end_col_letter = self._end_col_letter(col_idx, len(row_data))
         range_str = f"{start_col_letter}{sheet_row}:{end_col_letter}{sheet_row}"
         try:
@@ -124,10 +132,14 @@ class SheetsService:
             return False
 
     async def _get_sheet_id(self, spreadsheet_id: str) -> int:
+        if spreadsheet_id in self._sheet_id_cache:
+            return self._sheet_id_cache[spreadsheet_id]
         meta = self._get_client().spreadsheets().get(
             spreadsheetId=spreadsheet_id
         ).execute()
-        return meta["sheets"][0]["properties"]["sheetId"]
+        sheet_id = meta["sheets"][0]["properties"]["sheetId"]
+        self._sheet_id_cache[spreadsheet_id] = sheet_id
+        return sheet_id
 
     async def delete_row(self, spreadsheet_id: str, sheet_row: int, start_cell: str = "B7") -> bool:
         if not self._is_ready():

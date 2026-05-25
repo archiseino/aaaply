@@ -119,12 +119,6 @@
   }
 }
 
-.glass-card {
-  backdrop-filter: blur(20px) saturate(180%);
-  background-color: color-mix(in srgb, var(--bg-card) 70%, transparent);
-  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
-}
-
 /* ═══════════════════════════════════════════
    SUBTLE NOISE TEXTURE OVERLAY
    ═══════════════════════════════════════════ */

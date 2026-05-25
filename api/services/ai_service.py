@@ -41,7 +41,6 @@ async def execute_with_retry(api_key: str | None, execute_func):
         try: return await _try_model(key)
         except Exception as e:
             last_error = str(e)
-            continue 
             
     raise HTTPException(status_code=429, detail=f"AI Error: {last_error}")
 
@@ -281,14 +280,4 @@ async def generate_raw_text(prompt: str, api_key: str | None, max_tokens: int = 
         return response.text.strip()
     return await execute_with_retry(api_key, _execute)
 
-async def extract_information(image_path: str, api_key: str | None):
-    # Backward compatibility for old calls
-    return await process_all_in_one(image_path, None, "", api_key)
 
-async def extract_information_from_text(text_content: str, api_key: str | None):
-    # Backward compatibility for old calls
-    return await process_all_in_one(None, text_content, "", api_key)
-
-async def generate_email(company_name: str, job_title: str, context_text: str, cv_text: str | None, api_key: str | None):
-    # Backward compatibility for old calls
-    return await process_all_in_one(None, f"Perusahaan: {company_name}\nPosisi: {job_title}\n{context_text}", cv_text or "", api_key)

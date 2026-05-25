@@ -6,7 +6,6 @@ class GenerateEmailRequest(BaseModel):
     job_title: Optional[str] = None
     context_text: str
     cv_text: Optional[str] = None
-    template_type: str = "ai"
 
 class ReviseEmailRequest(BaseModel):
     current_body: str
@@ -16,10 +15,6 @@ class ReviseEmailRequest(BaseModel):
 
 class ExtractTextRequest(BaseModel):
     text: str
-
-class ShowCVRequest(BaseModel):
-    cv_filename: str
-    original_name: str
 
 
 class ScrapedJob(BaseModel):
@@ -49,7 +44,6 @@ class SyncAppendRequest(BaseModel):
     hr_email: str = ""
     status: str = "Applied"
     notes: str = ""
-    url_desc: str = ""
 
 
 class SyncUpdateRequest(BaseModel):

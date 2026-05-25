@@ -11,10 +11,8 @@ import os
 import random
 import re
 import time
-import base64
-import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
-from urllib.parse import urlparse, parse_qs, quote_plus
+from urllib.parse import quote_plus
 from typing import List, Optional
 import httpx
 from bs4 import BeautifulSoup
@@ -36,14 +34,6 @@ USER_AGENTS = [
 ]
 
 EMAIL_REGEX = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-
-try:
-    from playwright.async_api import async_playwright
-    from playwright_stealth import stealth_async
-    PLAYWRIGHT_AVAILABLE = True
-except ImportError:
-    PLAYWRIGHT_AVAILABLE = False
-
 
 def _format_date_iso(raw: str) -> Optional[str]:
     """Convert raw dates to ISO format and return None if older than 28 days."""
