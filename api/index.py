@@ -536,15 +536,17 @@ def _normalize_date(s: str) -> str:
 @app.post("/api/applications/sync")
 async def sync_append(req: SyncAppendRequest):
     try:
+        existing = await sheets_service.read_all_rows(req.sheet_id, req.start_cell)
+        next_no = len(existing) + 1
         sheet_status = _APP_TO_SHEET_STATUS.get(req.status, req.status)
         row = [
-            "",             # B: No. — leave blank (auto-formula)
+            str(next_no),   # B: No.
             req.company,    # C: Nama Perusahaan
             req.job_title,  # D: Posisi
             req.location,   # E: Lokasi
             req.date_applied[:10] if req.date_applied else "",  # F: Tanggal Melamar
             req.method,     # G: Melamar Lewat
-            "",             # H: Status Lamaran — LEAVE BLANK (formula col)
+            "",             # H: Status Lamaran — formula col
             sheet_status,   # I: Hasil (dropdown: Applied/No Response/Interviewing/Approve/Decline)
             req.notes,      # J: Catatan
         ]
