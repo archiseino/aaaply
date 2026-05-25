@@ -92,47 +92,6 @@ export async function syncUpdate(
   }
 }
 
-export async function syncFullPush(
-  sheetId: string,
-  startCell: string,
-  applications: {
-    company: string;
-    job_title: string;
-    location?: string;
-    date_applied?: string;
-    method?: string;
-    status?: string;
-    notes?: string;
-  }[]
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const res = await fetch(`${API_BASE}/api/applications/sync`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sheet_id: sheetId,
-        start_cell: startCell,
-        applications: applications.map(a => ({
-          company: a.company,
-          job_title: a.job_title,
-          location: a.location || '',
-          date_applied: a.date_applied || '',
-          method: a.method || '',
-          status: a.status || 'Applied',
-          notes: a.notes || '',
-        })),
-      }),
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.detail || 'Gagal push ke Google Sheets');
-    }
-    return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e.message || 'Gagal terhubung ke server' };
-  }
-}
-
 export async function syncDelete(
   sheetId: string,
   startCell: string,

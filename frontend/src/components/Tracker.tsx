@@ -17,7 +17,6 @@ import {
   X,
   RefreshCw,
   Download,
-  Upload,
 } from 'lucide-react';
 import {
   PieChart,
@@ -56,10 +55,7 @@ interface TrackerProps {
   onEdit: (app: JobApplication) => void;
   onAdd?: (app: JobApplication) => void;
   sheetId?: string;
-  onSyncFromSheets?: () => Promise<JobApplication[]>;
-  onSyncToSheets?: () => Promise<{ success: boolean; errors?: string[] }>;
-  onSyncFullPush?: () => Promise<boolean>;
-  lastSyncedAt?: string;
+  onSyncFromSheets?: () => Promise<any>;
 }
 
 const statusStyles: Record<string, React.CSSProperties> = {
@@ -141,9 +137,6 @@ const Tracker: React.FC<TrackerProps> = ({
   onAdd,
   sheetId,
   onSyncFromSheets,
-  onSyncToSheets,
-  onSyncFullPush,
-  lastSyncedAt,
 }) => {
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
@@ -157,7 +150,7 @@ const Tracker: React.FC<TrackerProps> = ({
     status: 'Applied',
     dateApplied: new Date().toISOString(),
   });
-  const [isSyncing, setIsSyncing] = useState<'from' | 'to' | 'push' | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -404,85 +397,29 @@ const Tracker: React.FC<TrackerProps> = ({
           </div>
           <div className='flex items-center gap-2'>
             {sheetId && (
-              <>
-                <button
-                  onClick={async () => {
-                    if (!onSyncFromSheets || isSyncing) return;
-                    setIsSyncing('from');
-                    await onSyncFromSheets();
-                    setIsSyncing(null);
-                  }}
-                  disabled={isSyncing !== null}
-                  className='flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 active:scale-95 hover:opacity-90 disabled:opacity-50'
-                  style={{
-                    backgroundColor: 'var(--bg-elevated)',
-                    color: 'var(--text-secondary)',
-                    border: '1px solid var(--border)',
-                  }}
-                  title='Sync from Sheets'
-                >
-                  {isSyncing === 'from' ? (
-                    <RefreshCw size={14} className='animate-spin' />
-                  ) : (
-                    <Download size={14} />
-                  )}
-                  <span className='hidden sm:inline'>From Sheets</span>
-                </button>
-                <button
-                  onClick={async () => {
-                    if (!onSyncToSheets || isSyncing) return;
-                    setIsSyncing('to');
-                    await onSyncToSheets();
-                    setIsSyncing(null);
-                  }}
-                  disabled={isSyncing !== null}
-                  className='flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 active:scale-95 hover:opacity-90 disabled:opacity-50'
-                  style={{
-                    backgroundColor: 'var(--bg-elevated)',
-                    color: 'var(--text-secondary)',
-                    border: '1px solid var(--border)',
-                  }}
-                  title='Sync to Sheets'
-                >
-                  {isSyncing === 'to' ? (
-                    <RefreshCw size={14} className='animate-spin' />
-                  ) : (
-                    <Upload size={14} />
-                  )}
-                  <span className='hidden sm:inline'>To Sheets</span>
-                </button>
-                <button
-                  onClick={async () => {
-                    if (!onSyncFullPush || isSyncing) return;
-                    setIsSyncing('push');
-                    await onSyncFullPush();
-                    setIsSyncing(null);
-                  }}
-                  disabled={isSyncing !== null}
-                  className='flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 active:scale-95 hover:opacity-90 disabled:opacity-50'
-                  style={{
-                    backgroundColor: 'var(--bg-elevated)',
-                    color: 'var(--text-secondary)',
-                    border: '1px solid var(--border)',
-                  }}
-                  title='Push all data to Sheets'
-                >
-                  {isSyncing === 'push' ? (
-                    <RefreshCw size={14} className='animate-spin' />
-                  ) : (
-                    <RefreshCw size={14} />
-                  )}
-                  <span className='hidden sm:inline'>Push All</span>
-                </button>
-                {lastSyncedAt && (
-                  <span
-                    className='text-[10px] hidden lg:inline'
-                    style={{ color: 'var(--text-muted)' }}
-                  >
-                    {lastSyncedAt}
-                  </span>
+              <button
+                onClick={async () => {
+                  if (!onSyncFromSheets || isSyncing) return;
+                  setIsSyncing(true);
+                  await onSyncFromSheets();
+                  setIsSyncing(false);
+                }}
+                disabled={isSyncing}
+                className='flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all shrink-0 active:scale-95 hover:opacity-90 disabled:opacity-50'
+                style={{
+                  backgroundColor: 'var(--bg-elevated)',
+                  color: 'var(--text-secondary)',
+                  border: '1px solid var(--border)',
+                }}
+                title='Sync from Sheets'
+              >
+                {isSyncing ? (
+                  <RefreshCw size={14} className='animate-spin' />
+                ) : (
+                  <Download size={14} />
                 )}
-              </>
+                <span className='hidden sm:inline'>From Sheets</span>
+              </button>
             )}
             <button
               onClick={() => setIsAddModalOpen(true)}

@@ -15,7 +15,7 @@ import Toast, { type ToastType } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import JobFinder from './components/JobFinder';
 import { Briefcase } from 'lucide-react';
-import { syncFromSheets, syncAppend, syncUpdate, syncDelete, syncFullPush } from './utils/sheetsSync';
+import { syncFromSheets, syncAppend, syncUpdate, syncDelete } from './utils/sheetsSync';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -46,7 +46,6 @@ function App() {
   const [duplicateModal, setDuplicateModal] = useState<{isOpen: boolean, data: any | null}>({ isOpen: false, data: null });
   const [sheetId, setSheetId] = useState(() => localStorage.getItem('SOBAT_SHEET_ID') || '');
   const [startCell, setStartCell] = useState(() => localStorage.getItem('SOBAT_START_CELL') || 'B7');
-  const [lastSyncedAt, setLastSyncedAt] = useState<string>('');
 
   const notify = (message: string, type: ToastType = 'info') => {
     // Anti-loop: don't add duplicate messages that are already showing
@@ -93,6 +92,26 @@ function App() {
       } catch (e) {
         console.error("Failed to parse tracker data");
       }
+    }
+    // Auto-load from sheet if configured
+    const sid = localStorage.getItem('SOBAT_SHEET_ID');
+    if (sid) {
+      const sc = localStorage.getItem('SOBAT_START_CELL') || 'B7';
+      syncFromSheets(sid, sc).then(({ apps, error }) => {
+        if (error || apps.length === 0) return;
+        const now = new Date().toISOString();
+        setApplications(apps.map((s, idx) => ({
+          id: `sheet-${s.row_index || idx}-${Date.now()}`,
+          companyName: s.company,
+          jobTitle: s.job_title,
+          hrEmail: '',
+          location: s.location || '',
+          method: s.method || '',
+          dateApplied: s.date_applied || now,
+          status: (s.status as JobApplication['status']) || 'Applied',
+          sheetRowIndex: s.row_index,
+        })));
+      });
     }
   }, []);
 
@@ -451,7 +470,7 @@ function App() {
         if (res.success) {
           notify("✅ Email berhasil dikirim via Gmail!", "success");
           addApplication();
-          handleSyncToSheets().catch(() => {});
+          _syncAppAndReload(result).catch(() => {});
         } else {
           notify(res.error || "Gagal mengirim email Gmail.", "error");
         }
@@ -484,7 +503,7 @@ function App() {
         if (res.success) {
           notify("✅ Email berhasil dikirim via Outlook!", "success");
           addApplication();
-          handleSyncToSheets().catch(() => {});
+          _syncAppAndReload(result).catch(() => {});
         } else {
           notify(res.error || "Gagal mengirim email Outlook.", "error");
         }
@@ -514,6 +533,7 @@ function App() {
     }
 
     addApplication();
+    _syncAppAndReload(result).catch(() => {});
   };
 
   // Removed duplicate clearInput
@@ -598,29 +618,15 @@ function App() {
     }
   };
 
-  const handleAddManualApplication = (newApp: JobApplication) => {
-    setApplications(prev => [newApp, ...prev]);
-    notify("Lamaran manual berhasil ditambahkan!", "success");
-  };
-
   const getSheetCfg = () => ({
     sheetId: localStorage.getItem('SOBAT_SHEET_ID') || sheetId,
     startCell: localStorage.getItem('SOBAT_START_CELL') || startCell,
   });
 
-  const handleSyncFromSheets = async (): Promise<JobApplication[]> => {
-    const { sheetId: sid, startCell: sc } = getSheetCfg();
-    if (!sid) {
-      notify("Sheet ID belum dikonfigurasi. Isi di Pengaturan.", "warning");
-      return [];
-    }
-    const { apps, error } = await syncFromSheets(sid, sc);
-    if (error) {
-      notify("Sync error: " + error, "error");
-      return [];
-    }
+  const _reloadFromSheet = (apps: { row_index?: number; company: string; job_title: string; location?: string; date_applied?: string; method?: string; status: string }[]) => {
+    if (!apps.length) return;
     const now = new Date().toISOString();
-    const loaded: JobApplication[] = apps.map((s, idx) => ({
+    setApplications(apps.map((s, idx) => ({
       id: `sheet-${s.row_index || idx}-${Date.now()}`,
       companyName: s.company,
       jobTitle: s.job_title,
@@ -630,12 +636,42 @@ function App() {
       dateApplied: s.date_applied || now,
       status: (s.status as JobApplication['status']) || 'Applied',
       sheetRowIndex: s.row_index,
-    }));
-    setApplications(loaded);
-    const nowStr = new Date().toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    setLastSyncedAt(`Sync: ${nowStr}`);
-    notify(`${loaded.length} aplikasi dimuat dari Google Sheets`, "success");
-    return loaded;
+    })));
+  };
+
+  const _syncAppAndReload = async (appData: { company_name?: string; job_title?: string; hr_email?: string }) => {
+    const { sheetId: sid, startCell: sc } = getSheetCfg();
+    if (!sid) return;
+    const { success } = await syncAppend(sid, sc, {
+      company: appData.company_name || '',
+      job_title: appData.job_title || '',
+      method: appData.hr_email && appData.hr_email !== '-' ? `Email: ${appData.hr_email}` : '',
+      status: 'Applied',
+      date_applied: new Date().toISOString(),
+      notes: '',
+    });
+    if (!success) return;
+    const { apps } = await syncFromSheets(sid, sc);
+    _reloadFromSheet(apps);
+  };
+
+  const handleSyncFromSheets = async (): Promise<JobApplication[]> => {
+    setApplications(prev => [newApp, ...prev]);
+    notify("Lamaran manual berhasil ditambahkan!", "success");
+    const { sheetId: sid, startCell: sc } = getSheetCfg();
+    if (!sid) return;
+    const { success } = await syncAppend(sid, sc, {
+      company: newApp.companyName,
+      job_title: newApp.jobTitle,
+      location: newApp.location,
+      date_applied: newApp.dateApplied,
+      method: newApp.method || '',
+      status: newApp.status,
+      notes: '',
+    });
+    if (!success) return;
+    const { apps } = await syncFromSheets(sid, sc);
+    _reloadFromSheet(apps);
   };
 
   const handleSyncToSheets = async (): Promise<{success: boolean; errors?: string[]}> => {
@@ -1060,7 +1096,23 @@ function App() {
             >
               <JobFinder 
                 onApply={handleJobFinderApply}
-                onAddExternalApplication={(app) => setApplications(prev => [app, ...prev])}
+                onAddExternalApplication={async (app) => {
+                  setApplications(prev => [app, ...prev]);
+                  const { sheetId: sid, startCell: sc } = getSheetCfg();
+                  if (!sid) return;
+                  const { success } = await syncAppend(sid, sc, {
+                    company: app.companyName,
+                    job_title: app.jobTitle,
+                    location: app.location,
+                    date_applied: app.dateApplied,
+                    method: app.method || '',
+                    status: app.status,
+                    notes: '',
+                  });
+                  if (!success) return;
+                  const { apps } = await syncFromSheets(sid, sc);
+                  _reloadFromSheet(apps);
+                }}
                 notify={notify}
               />
             </motion.div>
@@ -1081,9 +1133,6 @@ function App() {
                 onAdd={handleAddManualApplication}
                 sheetId={sheetId}
                 onSyncFromSheets={handleSyncFromSheets}
-                onSyncToSheets={handleSyncToSheets}
-                onSyncFullPush={handleSyncFullPush}
-                lastSyncedAt={lastSyncedAt}
               />
             </motion.div>
           )}
