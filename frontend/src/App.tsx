@@ -580,8 +580,22 @@ function App() {
     }
   };
 
-  const handleDeleteApplication = (id: string) => {
+  const handleDeleteApplication = async (id: string) => {
+    const deleted = applications.find(a => a.id === id);
     setApplications(prev => prev.filter(app => app.id !== id));
+
+    if (deleted?.sheetRowIndex) {
+      const { sheetId: sid, startCell: sc } = getSheetCfg();
+      if (sid) {
+        const { success, error } = await syncDelete(sid, sc, deleted.sheetRowIndex);
+        if (!success) {
+          setApplications(prev => [deleted, ...prev]);
+          notify("Gagal hapus dari Google Sheets: " + (error || "Unknown"), "error");
+        } else {
+          notify("Dihapus dari Google Sheets ✅", "success");
+        }
+      }
+    }
   };
 
   const handleAddManualApplication = (newApp: JobApplication) => {
