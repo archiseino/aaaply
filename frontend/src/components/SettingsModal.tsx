@@ -28,6 +28,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [gmailApiEnabled, setGmailApiEnabled] = useState(false);
   const [outlookApiEnabled, setOutlookApiEnabled] = useState(false);
+  const [sheetId, setSheetId] = useState('');
+  const [startCell, setStartCell] = useState('B7');
 
   useEffect(() => {
     const storedKey = localStorage.getItem('GEMINI_API_KEY') || '';
@@ -36,6 +38,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
     if (storedCVs) { try { setCvHistory(JSON.parse(storedCVs)); } catch(e) {} }
     setGmailApiEnabled(localStorage.getItem('GMAIL_API_ENABLED') === 'true');
     setOutlookApiEnabled(localStorage.getItem('OUTLOOK_API_ENABLED') === 'true');
+    const storedSheetId = localStorage.getItem('SOBAT_SHEET_ID') || '';
+    setSheetId(storedSheetId);
+    const storedStartCell = localStorage.getItem('SOBAT_START_CELL') || 'B7';
+    setStartCell(storedStartCell);
   }, []);
 
   const handleSave = () => {
@@ -43,6 +49,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
     localStorage.setItem('APPLYBOT_CVS', JSON.stringify(cvHistory));
     localStorage.setItem('GMAIL_API_ENABLED', String(gmailApiEnabled));
     localStorage.setItem('OUTLOOK_API_ENABLED', String(outlookApiEnabled));
+    localStorage.setItem('SOBAT_SHEET_ID', sheetId);
+    localStorage.setItem('SOBAT_START_CELL', startCell);
     setSaved(true);
     setTimeout(() => { setSaved(false); onClose(); }, 1000);
   };
@@ -145,6 +153,25 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
                   <span className="text-sm" style={{ color: 'var(--text-primary)' }}>Aktifkan Integrasi Draf Outlook API</span>
                 </label>
                 <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Jika dimatikan, tombol Gmail/Outlook akan menggunakan cara standar tanpa otomatisasi pelampiran CV.</p>
+              </div>
+              <hr style={{ borderColor: 'var(--border)' }} />
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Google Sheets ID (Sync Tracker)</label>
+                <input
+                  type="text" value={sheetId} onChange={(e) => setSheetId(e.target.value)}
+                  className="w-full rounded-lg px-4 py-2.5 font-mono text-sm focus:outline-none focus:ring-1 transition-all"
+                  style={inputStyle} placeholder="1a2B3cD4eF5g6H7iJ8kL9mN"
+                />
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Buat Google Sheet, share dengan service account, lalu tempel ID Sheet di sini. Gunakan tombol Sync di halaman Tracker.</p>
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>Start Cell</label>
+                <input
+                  type="text" value={startCell} onChange={(e) => setStartCell(e.target.value)}
+                  className="w-full rounded-lg px-4 py-2.5 font-mono text-sm focus:outline-none focus:ring-1 transition-all"
+                  style={inputStyle} placeholder="B7"
+                />
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Sel pertama tempat data dimulai (contoh: B7 jika header di baris 5, data mulai baris 7 kolom B).</p>
               </div>
             </div>
           ) : (

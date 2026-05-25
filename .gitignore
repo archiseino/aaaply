@@ -27,3 +27,5 @@ logs/
 Thumbs.db
 
 issue/
+
+GOOGLE_SERVICE_ACCOUNT_KEY.json

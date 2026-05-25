@@ -35,3 +35,31 @@ class ScrapedJob(BaseModel):
     category: str
     posted_at: Optional[str] = None
     scraped_at: Optional[str] = None
+
+
+class SyncAppendRequest(BaseModel):
+    sheet_id: str
+    start_cell: str = "B7"
+    app_id: str = ""
+    company: str = ""
+    job_title: str = ""
+    location: str = ""
+    date_applied: str = ""
+    method: str = ""
+    status: str = "Sent"
+    notes: str = ""
+    url_desc: str = ""
+
+
+class SyncUpdateRequest(BaseModel):
+    sheet_id: str
+    start_cell: str = "B7"
+    row_index: int
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class SyncDeleteRequest(BaseModel):
+    sheet_id: str
+    start_cell: str = "B7"
+    row_index: int

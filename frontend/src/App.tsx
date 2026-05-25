@@ -15,6 +15,7 @@ import Toast, { type ToastType } from './components/Toast';
 import { ConfirmModal } from './components/ConfirmModal';
 import JobFinder from './components/JobFinder';
 import { Briefcase } from 'lucide-react';
+import { syncFromSheets, syncAppend, syncUpdate, syncDelete } from './utils/sheetsSync';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -43,6 +44,9 @@ function App() {
   const [notifications, setNotifications] = useState<{id: string; type: ToastType; message: string}[]>([]);
   const [infoModal, setInfoModal] = useState<{isOpen: boolean, type: 'about' | 'privacy' | null}>({ isOpen: false, type: null });
   const [duplicateModal, setDuplicateModal] = useState<{isOpen: boolean, data: any | null}>({ isOpen: false, data: null });
+  const [sheetId, setSheetId] = useState(() => localStorage.getItem('SOBAT_SHEET_ID') || '');
+  const [startCell, setStartCell] = useState(() => localStorage.getItem('SOBAT_START_CELL') || 'B7');
+  const [lastSyncedAt, setLastSyncedAt] = useState<string>('');
 
   const notify = (message: string, type: ToastType = 'info') => {
     // Anti-loop: don't add duplicate messages that are already showing
@@ -447,6 +451,7 @@ function App() {
         if (res.success) {
           notify("✅ Email berhasil dikirim via Gmail!", "success");
           addApplication();
+          handleSyncToSheets().catch(() => {});
         } else {
           notify(res.error || "Gagal mengirim email Gmail.", "error");
         }
@@ -479,6 +484,7 @@ function App() {
         if (res.success) {
           notify("✅ Email berhasil dikirim via Outlook!", "success");
           addApplication();
+          handleSyncToSheets().catch(() => {});
         } else {
           notify(res.error || "Gagal mengirim email Outlook.", "error");
         }
@@ -561,6 +567,88 @@ function App() {
   const handleAddManualApplication = (newApp: JobApplication) => {
     setApplications(prev => [newApp, ...prev]);
     notify("Lamaran manual berhasil ditambahkan!", "success");
+  };
+
+  const getSheetCfg = () => ({
+    sheetId: localStorage.getItem('SOBAT_SHEET_ID') || sheetId,
+    startCell: localStorage.getItem('SOBAT_START_CELL') || startCell,
+  });
+
+  const handleSyncFromSheets = async (): Promise<JobApplication[]> => {
+    const { sheetId: sid, startCell: sc } = getSheetCfg();
+    if (!sid) {
+      notify("Sheet ID belum dikonfigurasi. Isi di Pengaturan.", "warning");
+      return [];
+    }
+    const { apps, error } = await syncFromSheets(sid, sc);
+    if (error) {
+      notify("Sync error: " + error, "error");
+      return [];
+    }
+    const now = new Date().toISOString();
+    const loaded: JobApplication[] = apps.map((s, idx) => ({
+      id: `sheet-${s.row_index || idx}-${Date.now()}`,
+      companyName: s.company,
+      jobTitle: s.job_title,
+      hrEmail: '',
+      location: s.location || '',
+      method: s.method || '',
+      dateApplied: s.date_applied || now,
+      status: (s.status as JobApplication['status']) || 'Sent',
+      sheetRowIndex: s.row_index,
+    }));
+    setApplications(loaded);
+    const nowStr = new Date().toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    setLastSyncedAt(`Sync: ${nowStr}`);
+    notify(`${loaded.length} aplikasi dimuat dari Google Sheets`, "success");
+    return loaded;
+  };
+
+  const handleSyncToSheets = async (): Promise<{success: boolean; errors?: string[]}> => {
+    const { sheetId: sid, startCell: sc } = getSheetCfg();
+    if (!sid) {
+      notify("Sheet ID belum dikonfigurasi. Isi di Pengaturan.", "warning");
+      return { success: false, errors: ['No Sheet ID'] };
+    }
+    const errors: string[] = [];
+    let synced = 0;
+    const toAppend = applications.filter(a => !a.sheetRowIndex);
+    for (const app of toAppend) {
+      const { success, error } = await syncAppend(sid, sc, {
+        company: app.companyName,
+        job_title: app.jobTitle,
+        location: app.location,
+        date_applied: app.dateApplied,
+        method: app.method || (app.hrEmail !== '-' ? `Email: ${app.hrEmail}` : ''),
+        status: app.status,
+        notes: '',
+      });
+      if (success) synced++;
+      else errors.push(`${app.companyName}: ${error}`);
+    }
+    if (synced > 0) {
+      const { apps } = await syncFromSheets(sid, sc);
+      if (apps.length > 0) {
+        const now = new Date().toISOString();
+        const reloaded: JobApplication[] = apps.map((s, idx) => ({
+          id: `sheet-${s.row_index || idx}-${Date.now()}`,
+          companyName: s.company,
+          jobTitle: s.job_title,
+          hrEmail: '',
+          location: s.location || '',
+          method: s.method || '',
+          dateApplied: s.date_applied || now,
+          status: (s.status as JobApplication['status']) || 'Sent',
+          sheetRowIndex: s.row_index,
+        }));
+        setApplications(reloaded);
+      }
+    }
+    const nowStr = new Date().toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    setLastSyncedAt(`Sync: ${nowStr}`);
+    if (errors.length === 0) notify(`${synced} aplikasi baru tersimpan ke Google Sheets ✅`, "success");
+    else notify(`${synced} tersimpan, ${errors.length} gagal`, "warning");
+    return { success: errors.length === 0, errors };
   };
 
   const isImage = file?.type.startsWith('image/');
@@ -915,6 +1003,10 @@ function App() {
                 onDelete={handleDeleteApplication}
                 onEdit={handleEditApplication}
                 onAdd={handleAddManualApplication}
+                sheetId={sheetId}
+                onSyncFromSheets={handleSyncFromSheets}
+                onSyncToSheets={handleSyncToSheets}
+                lastSyncedAt={lastSyncedAt}
               />
             </motion.div>
           )}
@@ -928,6 +1020,8 @@ function App() {
             onClose={() => {
               setIsSettingsOpen(false);
               loadCVHistory();
+              setSheetId(localStorage.getItem('SOBAT_SHEET_ID') || '');
+              setStartCell(localStorage.getItem('SOBAT_START_CELL') || 'B7');
             }} 
             notify={notify}
           />
