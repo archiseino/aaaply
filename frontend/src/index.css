@@ -30,6 +30,7 @@
   --status-yellow: #b8a44e;
   --status-red: #b05a5a;
   --status-green: #5a9e6f;
+  --status-gray: #7a7a7a;
 
   --scrollbar-thumb: #2e2e2e;
   --scrollbar-thumb-hover: #444444;
@@ -60,6 +61,7 @@
   --status-yellow: #9e8c3a;
   --status-red: #9e4a4a;
   --status-green: #4a8a5f;
+  --status-gray: #6a6a6a;
 
   --scrollbar-thumb: #ccc9c2;
   --scrollbar-thumb-hover: #b0ada6;

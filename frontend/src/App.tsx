@@ -401,7 +401,7 @@ function App() {
         jobTitle: result?.job_title || 'Posisi Tidak Diketahui',
         hrEmail: result?.hr_email || '-',
         dateApplied: new Date().toISOString(),
-        status: 'Sent',
+        status: 'Applied',
         subject: result?.subject,
         body: result?.body,
         contextText: result?.context_text || textInput
@@ -594,7 +594,7 @@ function App() {
       location: s.location || '',
       method: s.method || '',
       dateApplied: s.date_applied || now,
-      status: (s.status as JobApplication['status']) || 'Sent',
+      status: (s.status as JobApplication['status']) || 'Applied',
       sheetRowIndex: s.row_index,
     }));
     setApplications(loaded);
@@ -638,7 +638,7 @@ function App() {
           location: s.location || '',
           method: s.method || '',
           dateApplied: s.date_applied || now,
-          status: (s.status as JobApplication['status']) || 'Sent',
+          status: (s.status as JobApplication['status']) || 'Applied',
           sheetRowIndex: s.row_index,
         }));
         setApplications(reloaded);

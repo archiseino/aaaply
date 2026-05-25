@@ -495,14 +495,6 @@ async def trigger_scrape_all(request: Request):
         logger.error(f"trigger_scrape_all error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-_APP_TO_SHEET_STATUS = {
-    "Sent": "Applied", "Interview": "Interviewing",
-    "Rejected": "Decline", "Accepted": "Approve",
-}
-_SHEET_TO_APP_STATUS = {
-    "Applied": "Sent", "Interviewing": "Interview",
-    "No Response": "Sent", "Approve": "Accepted", "Decline": "Rejected",
-}
 
 _ID_MONTH = {
     "jan": "01", "feb": "02", "mar": "03", "apr": "04", "mei": "05", "jun": "06",
@@ -538,7 +530,6 @@ async def sync_append(req: SyncAppendRequest):
     try:
         existing = await sheets_service.read_all_rows(req.sheet_id, req.start_cell)
         next_no = len(existing) + 1
-        sheet_status = _APP_TO_SHEET_STATUS.get(req.status, req.status)
         row = [
             str(next_no),   # B: No.
             req.company,    # C: Nama Perusahaan
@@ -547,7 +538,7 @@ async def sync_append(req: SyncAppendRequest):
             req.date_applied[:10] if req.date_applied else "",  # F: Tanggal Melamar
             req.method,     # G: Melamar Lewat
             "",             # H: Status Lamaran — formula col
-            sheet_status,   # I: Hasil (dropdown: Applied/No Response/Interviewing/Approve/Decline)
+            req.status,     # I: Hasil (Applied/No Response/Interviewing/Approve/Decline)
             req.notes,      # J: Catatan
         ]
         result = await sheets_service.append_row(req.sheet_id, req.start_cell, row)
@@ -572,7 +563,6 @@ async def sync_read(sheet_id: str, start_cell: str = "B7"):
             if not row or not any(cell.strip() for cell in row):
                 continue
             raw_status = row[7] if len(row) > 7 else ""
-            mapped_status = _SHEET_TO_APP_STATUS.get(raw_status, raw_status or "Sent")
             apps.append({
                 "row_index": i + start_row,
                 "company": row[1] if len(row) > 1 else "",
@@ -580,7 +570,7 @@ async def sync_read(sheet_id: str, start_cell: str = "B7"):
                 "location": row[3] if len(row) > 3 else "",
                 "date_applied": _normalize_date(row[4]) if len(row) > 4 else "",
                 "method": row[5] if len(row) > 5 else "",
-                "status": mapped_status,
+                "status": raw_status or "Applied",
                 "notes": row[8] if len(row) > 8 else "",
             })
         return {"applications": apps}
@@ -604,8 +594,7 @@ async def sync_update(req: SyncUpdateRequest):
         #                    0   1  2  3  4  5  6  7  8
         # Columns: blank, company, title, loc, date, method, H-formula, hasil, notes
         if req.status:
-            sheet_status = _APP_TO_SHEET_STATUS.get(req.status, req.status)
-            row[7] = sheet_status  # I: Hasil
+            row[7] = req.status  # I: Hasil
         if req.notes is not None:
             row[8] = req.notes  # J: Catatan
         ok = await sheets_service.update_row(req.sheet_id, req.start_cell, req.row_index, row)

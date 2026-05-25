@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   XCircle,
   Users,
+  HelpCircle,
   Trash2,
   Edit2,
   SearchX,
@@ -39,7 +40,7 @@ export interface JobApplication {
   jobTitle: string;
   hrEmail: string;
   dateApplied: string;
-  status: 'Sent' | 'Interview' | 'Rejected' | 'Accepted';
+  status: 'Applied' | 'No Response' | 'Interviewing' | 'Approve' | 'Decline';
   subject?: string;
   body?: string;
   contextText?: string;
@@ -61,24 +62,29 @@ interface TrackerProps {
 }
 
 const statusStyles: Record<string, React.CSSProperties> = {
-  Sent: {
+  Applied: {
     backgroundColor: 'color-mix(in srgb, var(--status-blue) 15%, transparent)',
     color: 'var(--status-blue)',
     border: '1px solid color-mix(in srgb, var(--status-blue) 25%, transparent)',
   },
-  Interview: {
+  'No Response': {
+    backgroundColor: 'color-mix(in srgb, var(--status-gray) 15%, transparent)',
+    color: 'var(--status-gray)',
+    border: '1px solid color-mix(in srgb, var(--status-gray) 25%, transparent)',
+  },
+  Interviewing: {
     backgroundColor:
       'color-mix(in srgb, var(--status-yellow) 15%, transparent)',
     color: 'var(--status-yellow)',
     border:
       '1px solid color-mix(in srgb, var(--status-yellow) 25%, transparent)',
   },
-  Rejected: {
+  Decline: {
     backgroundColor: 'color-mix(in srgb, var(--status-red) 15%, transparent)',
     color: 'var(--status-red)',
     border: '1px solid color-mix(in srgb, var(--status-red) 25%, transparent)',
   },
-  Accepted: {
+  Approve: {
     backgroundColor: 'color-mix(in srgb, var(--status-green) 15%, transparent)',
     color: 'var(--status-green)',
     border:
@@ -87,17 +93,19 @@ const statusStyles: Record<string, React.CSSProperties> = {
 };
 
 const CHART_COLORS: Record<string, string> = {
-  Sent: '#6b8aaf',
-  Interview: '#b8a44e',
-  Rejected: '#b05a5a',
-  Accepted: '#5a9e6f',
+  Applied: '#6b8aaf',
+  'No Response': '#7a7a7a',
+  Interviewing: '#b8a44e',
+  Decline: '#b05a5a',
+  Approve: '#5a9e6f',
 };
 
-const statusIcons = {
-  Sent: <Clock size={14} />,
-  Interview: <Users size={14} />,
-  Rejected: <XCircle size={14} />,
-  Accepted: <CheckCircle2 size={14} />,
+const statusIcons: Record<string, React.ReactNode> = {
+  Applied: <Clock size={14} />,
+  'No Response': <HelpCircle size={14} />,
+  Interviewing: <Users size={14} />,
+  Decline: <XCircle size={14} />,
+  Approve: <CheckCircle2 size={14} />,
 };
 
 function safeFormatDate(dateStr: string): string {
@@ -142,7 +150,7 @@ const Tracker: React.FC<TrackerProps> = ({
   }>({ isOpen: false, targetId: null });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newApp, setNewApp] = useState<Partial<JobApplication>>({
-    status: 'Sent',
+    status: 'Applied',
     dateApplied: new Date().toISOString(),
   });
   const [isSyncing, setIsSyncing] = useState<'from' | 'to' | null>(null);
@@ -150,7 +158,7 @@ const Tracker: React.FC<TrackerProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<
-    'All' | 'Sent' | 'Interview' | 'Rejected' | 'Accepted'
+    'All' | 'Applied' | 'No Response' | 'Interviewing' | 'Approve' | 'Decline'
   >('All');
 
   useEffect(() => {
@@ -177,7 +185,7 @@ const Tracker: React.FC<TrackerProps> = ({
       });
     }
     setIsAddModalOpen(false);
-    setNewApp({ status: 'Sent', dateApplied: new Date().toISOString() });
+    setNewApp({ status: 'Applied', dateApplied: new Date().toISOString() });
   };
 
   const filteredApplications = useMemo(() => {
@@ -197,15 +205,16 @@ const Tracker: React.FC<TrackerProps> = ({
   }, [applications, debouncedSearch, statusFilter]);
 
   const stats = useMemo(() => {
-    const data = { Sent: 0, Interview: 0, Rejected: 0, Accepted: 0 };
+    const data: Record<string, number> = { Applied: 0, 'No Response': 0, Interviewing: 0, Approve: 0, Decline: 0 };
     applications.forEach((app) => {
-      data[app.status]++;
+      data[app.status] = (data[app.status] || 0) + 1;
     });
     return [
-      { name: 'Sent', value: data.Sent },
-      { name: 'Interview', value: data.Interview },
-      { name: 'Rejected', value: data.Rejected },
-      { name: 'Accepted', value: data.Accepted },
+      { name: 'Applied', value: data.Applied },
+      { name: 'No Response', value: data['No Response'] },
+      { name: 'Interviewing', value: data.Interviewing },
+      { name: 'Approve', value: data.Approve },
+      { name: 'Decline', value: data.Decline },
     ].filter((item) => item.value > 0);
   }, [applications]);
 
@@ -637,10 +646,11 @@ const Tracker: React.FC<TrackerProps> = ({
                               >
                                 {(
                                   [
-                                    'Sent',
-                                    'Interview',
-                                    'Rejected',
-                                    'Accepted',
+                                    'Applied',
+                                    'No Response',
+                                    'Interviewing',
+                                    'Approve',
+                                    'Decline',
                                   ] as const
                                 ).map((s) => (
                                   <button
@@ -780,10 +790,11 @@ const Tracker: React.FC<TrackerProps> = ({
                         >
                           {(
                             [
-                              'Sent',
-                              'Interview',
-                              'Rejected',
-                              'Accepted',
+                              'Applied',
+                              'No Response',
+                              'Interviewing',
+                              'Approve',
+                              'Decline',
                             ] as const
                           ).map((s) => (
                             <button
@@ -996,7 +1007,7 @@ const Tracker: React.FC<TrackerProps> = ({
                     Status
                   </label>
                   <select
-                    value={newApp.status || 'Sent'}
+                    value={newApp.status || 'Applied'}
                     onChange={(e) =>
                       setNewApp({ ...newApp, status: e.target.value as any })
                     }
@@ -1007,10 +1018,11 @@ const Tracker: React.FC<TrackerProps> = ({
                       color: 'var(--text-primary)',
                     }}
                   >
-                    <option value='Sent'>Sent</option>
-                    <option value='Interview'>Interview</option>
-                    <option value='Rejected'>Rejected</option>
-                    <option value='Accepted'>Accepted</option>
+                    <option value='Applied'>Applied</option>
+                    <option value='No Response'>No Response</option>
+                    <option value='Interviewing'>Interviewing</option>
+                    <option value='Approve'>Approve</option>
+                    <option value='Decline'>Decline</option>
                   </select>
                 </div>
               </div>

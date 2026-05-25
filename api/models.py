@@ -46,7 +46,7 @@ class SyncAppendRequest(BaseModel):
     location: str = ""
     date_applied: str = ""
     method: str = ""
-    status: str = "Sent"
+    status: str = "Applied"
     notes: str = ""
     url_desc: str = ""
 

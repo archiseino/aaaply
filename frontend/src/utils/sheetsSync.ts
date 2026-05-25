@@ -50,7 +50,7 @@ export async function syncAppend(
         location: app.location || '',
         date_applied: app.date_applied || '',
         method: app.method || '',
-        status: app.status || 'Sent',
+        status: app.status || 'Applied',
         notes: app.notes || '',
       }),
     });

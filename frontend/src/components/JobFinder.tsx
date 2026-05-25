@@ -165,7 +165,7 @@ const JobFinder: React.FC<JobFinderProps> = ({ onApply, onAddExternalApplication
         jobTitle: externalJobModal.title,
         hrEmail: externalJobModal.source, // Use source as fallback for manual external apps
         dateApplied: new Date().toISOString(),
-        status: 'Sent'
+        status: 'Applied'
       });
       notify("Lamaran ditambahkan ke Tracker!", "success");
     }
