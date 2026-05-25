@@ -12,6 +12,7 @@ import {
   HelpCircle,
   Trash2,
   Edit2,
+  Send,
   SearchX,
   Plus,
   X,
@@ -34,18 +35,19 @@ import ApplicationSearch from './ApplicationSearch';
 import StatusFilter from './StatusFilter';
 
 export interface JobApplication {
-  id: string;
-  companyName: string;
-  jobTitle: string;
-  hrEmail: string;
-  dateApplied: string;
-  status: 'Applied' | 'No Response' | 'Interviewing' | 'Approve' | 'Decline';
-  subject?: string;
-  body?: string;
-  contextText?: string;
-  location?: string;
-  method?: string;
-  sheetRowIndex?: number;
+    id: string;
+    companyName: string;
+    jobTitle: string;
+    hrEmail: string;
+    dateApplied: string;
+    status: 'Applied' | 'No Response' | 'Interviewing' | 'Approve' | 'Decline';
+    subject?: string;
+    body?: string;
+    contextText?: string;
+    location?: string;
+    method?: string;
+    notes?: string;
+    sheetRowIndex?: number;
 }
 
 interface TrackerProps {
@@ -53,6 +55,7 @@ interface TrackerProps {
   onUpdateStatus: (id: string, newStatus: JobApplication['status']) => void;
   onDelete: (id: string) => void;
   onEdit: (app: JobApplication) => void;
+  onEditSave?: (app: JobApplication) => void;
   onAdd?: (app: JobApplication) => void;
   sheetId?: string;
   onSyncFromSheets?: () => Promise<any>;
@@ -134,6 +137,7 @@ const Tracker: React.FC<TrackerProps> = ({
   onUpdateStatus,
   onDelete,
   onEdit,
+  onEditSave,
   onAdd,
   sheetId,
   onSyncFromSheets,
@@ -145,6 +149,8 @@ const Tracker: React.FC<TrackerProps> = ({
     isSynced: boolean;
   }>({ isOpen: false, targetId: null, isSynced: false });
   const [editConfirmApp, setEditConfirmApp] = useState<JobApplication | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingApp, setEditingApp] = useState<JobApplication | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newApp, setNewApp] = useState<Partial<JobApplication>>({
     status: 'Applied',
@@ -183,6 +189,14 @@ const Tracker: React.FC<TrackerProps> = ({
     }
     setIsAddModalOpen(false);
     setNewApp({ status: 'Applied', dateApplied: new Date().toISOString() });
+  };
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingApp || !onEditSave) return;
+    onEditSave(editingApp);
+    setIsEditModalOpen(false);
+    setEditingApp(null);
   };
 
   const filteredApplications = useMemo(() => {
@@ -467,6 +481,12 @@ const Tracker: React.FC<TrackerProps> = ({
                   className='p-4 font-semibold'
                   style={{ borderBottom: '1px solid var(--border)' }}
                 >
+                  Email Company
+                </th>
+                <th
+                  className='p-4 font-semibold'
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                >
                   Lokasi
                 </th>
                 <th
@@ -480,7 +500,7 @@ const Tracker: React.FC<TrackerProps> = ({
             <tbody>
               {filteredApplications.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className='p-12 text-center'>
+                  <td colSpan={6} className='p-12 text-center'>
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -574,6 +594,14 @@ const Tracker: React.FC<TrackerProps> = ({
                         className='text-sm'
                         style={{ color: 'var(--text-secondary)' }}
                       >
+                        {app.hrEmail && app.hrEmail !== '-' ? app.hrEmail : '-'}
+                      </span>
+                    </td>
+                    <td className='p-4'>
+                      <span
+                        className='text-sm'
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
                         {app.location || '-'}
                       </span>
                     </td>
@@ -635,14 +663,25 @@ const Tracker: React.FC<TrackerProps> = ({
                         </div>
                         <button
                           onClick={() => {
+                            setEditingApp(app);
+                            setIsEditModalOpen(true);
+                          }}
+                          className='p-1.5 rounded-md transition-colors'
+                          style={{ color: 'var(--text-muted)' }}
+                          title='Edit Lamaran'
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => {
                             if (app.sheetRowIndex) setEditConfirmApp(app);
                             else onEdit(app);
                           }}
                           className='p-1.5 rounded-md transition-colors'
                           style={{ color: 'var(--text-muted)' }}
-                          title='Edit & Resend'
+                          title='Kirim Email Lamaran'
                         >
-                          <Edit2 size={16} />
+                          <Send size={16} />
                         </button>
                         <button
                           onClick={() =>
@@ -791,11 +830,28 @@ const Tracker: React.FC<TrackerProps> = ({
                   {safeFormatDate(app.dateApplied)}
                   </span>
                   <span className='flex items-center gap-1.5 truncate ml-3'>
-                    <Users size={11} /> {app.hrEmail}
+                    <Users size={11} /> {app.hrEmail && app.hrEmail !== '-' ? app.hrEmail : '-'}
                   </span>
+                </div>
+                <div className='flex items-center gap-2 text-[11px] px-1' style={{ color: 'var(--text-muted)' }}>
+                  <span>Lewat: {app.method || '-'}</span>
                 </div>
 
                 <div className='flex justify-between items-center gap-3'>
+                  <button
+                    onClick={() => {
+                      setEditingApp(app);
+                      setIsEditModalOpen(true);
+                    }}
+                    className='flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-colors'
+                    style={{
+                      backgroundColor: 'var(--bg-elevated)',
+                      color: 'var(--text-secondary)',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
+                    <Edit2 size={13} /> Edit
+                  </button>
                   <button
                     onClick={() => {
                       if (app.sheetRowIndex) setEditConfirmApp(app);
@@ -808,7 +864,7 @@ const Tracker: React.FC<TrackerProps> = ({
                       border: '1px solid var(--border)',
                     }}
                   >
-                    <Edit2 size={13} /> Edit & Resend
+                    <Send size={13} /> Kirim Email
                   </button>
                   <button
                     onClick={() =>
@@ -1068,6 +1124,250 @@ const Tracker: React.FC<TrackerProps> = ({
                 }}
               >
                 Simpan Lamaran
+              </button>
+            </form>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit App Modal */}
+      {isEditModalOpen && editingApp && (
+        <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
+          <div
+            className='absolute inset-0 bg-black/60 backdrop-blur-sm'
+            onClick={() => { setIsEditModalOpen(false); setEditingApp(null); }}
+          ></div>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            className='relative w-full max-w-md rounded-2xl p-6 overflow-hidden flex flex-col gap-4 shadow-2xl'
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            <div className='flex items-center justify-between'>
+              <h3
+                className='text-lg font-bold'
+                style={{ color: 'var(--text-primary)' }}
+              >
+                Edit Lamaran
+              </h3>
+              <button
+                onClick={() => { setIsEditModalOpen(false); setEditingApp(null); }}
+                className='p-1 rounded-md transition-colors hover:bg-white/10'
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={handleEditSubmit}
+              className='flex flex-col gap-4 mt-2'
+            >
+              <div className='flex flex-col gap-1.5'>
+                <label
+                  className='text-xs font-semibold'
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Nama Perusahaan <span className='text-rose-500'>*</span>
+                </label>
+                <input
+                  required
+                  type='text'
+                  value={editingApp.companyName || ''}
+                  onChange={(e) =>
+                    setEditingApp({ ...editingApp, companyName: e.target.value })
+                  }
+                  className='rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all'
+                  style={{
+                    backgroundColor: 'var(--bg-primary)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-primary)',
+                  }}
+                  placeholder='PT. Contoh Sukses'
+                />
+              </div>
+              <div className='flex flex-col gap-1.5'>
+                <label
+                  className='text-xs font-semibold'
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Posisi Pekerjaan <span className='text-rose-500'>*</span>
+                </label>
+                <input
+                  required
+                  type='text'
+                  value={editingApp.jobTitle || ''}
+                  onChange={(e) =>
+                    setEditingApp({ ...editingApp, jobTitle: e.target.value })
+                  }
+                  className='rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all'
+                  style={{
+                    backgroundColor: 'var(--bg-primary)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-primary)',
+                  }}
+                  placeholder='Software Engineer'
+                />
+              </div>
+              <div className='flex flex-col gap-1.5'>
+                <label
+                  className='text-xs font-semibold'
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Email HR / Kontak
+                </label>
+                <input
+                  type='text'
+                  value={editingApp.hrEmail || ''}
+                  onChange={(e) =>
+                    setEditingApp({ ...editingApp, hrEmail: e.target.value })
+                  }
+                  className='rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all'
+                  style={{
+                    backgroundColor: 'var(--bg-primary)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-primary)',
+                  }}
+                  placeholder='hr@company.com'
+                />
+              </div>
+              <div className='grid grid-cols-2 gap-3'>
+                <div className='flex flex-col gap-1.5'>
+                  <label
+                    className='text-xs font-semibold'
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Tanggal Apply
+                  </label>
+                  <input
+                    type='date'
+                    value={
+                      editingApp.dateApplied ? editingApp.dateApplied.split('T')[0] : ''
+                    }
+                    onChange={(e) =>
+                      setEditingApp({
+                        ...editingApp,
+                        dateApplied: new Date(e.target.value).toISOString(),
+                      })
+                    }
+                    className='rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all'
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-primary)',
+                      colorScheme: 'dark',
+                    }}
+                  />
+                </div>
+                <div className='flex flex-col gap-1.5'>
+                  <label
+                    className='text-xs font-semibold'
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Status
+                  </label>
+                  <select
+                    value={editingApp.status || 'Applied'}
+                    onChange={(e) =>
+                      setEditingApp({ ...editingApp, status: e.target.value as any })
+                    }
+                    className='rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all'
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    <option value='Applied'>Applied</option>
+                    <option value='No Response'>No Response</option>
+                    <option value='Interviewing'>Interviewing</option>
+                    <option value='Approve'>Approve</option>
+                    <option value='Decline'>Decline</option>
+                  </select>
+                </div>
+              </div>
+              <div className='grid grid-cols-2 gap-3'>
+                <div className='flex flex-col gap-1.5'>
+                  <label
+                    className='text-xs font-semibold'
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Melamar Lewat
+                  </label>
+                  <input
+                    type='text'
+                    value={editingApp.method || ''}
+                    onChange={(e) =>
+                      setEditingApp({ ...editingApp, method: e.target.value })
+                    }
+                    className='rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all'
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-primary)',
+                    }}
+                    placeholder='Email / LinkedIn / Website'
+                  />
+                </div>
+                <div className='flex flex-col gap-1.5'>
+                  <label
+                    className='text-xs font-semibold'
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    Lokasi
+                  </label>
+                  <input
+                    type='text'
+                    value={editingApp.location || ''}
+                    onChange={(e) =>
+                      setEditingApp({ ...editingApp, location: e.target.value })
+                    }
+                    className='rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all'
+                    style={{
+                      backgroundColor: 'var(--bg-primary)',
+                      border: '1px solid var(--border)',
+                      color: 'var(--text-primary)',
+                    }}
+                    placeholder='Jakarta / Remote'
+                  />
+                </div>
+              </div>
+              <div className='flex flex-col gap-1.5'>
+                <label
+                  className='text-xs font-semibold'
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Catatan
+                </label>
+                <textarea
+                  value={editingApp.notes || ''}
+                  onChange={(e) =>
+                    setEditingApp({ ...editingApp, notes: e.target.value })
+                  }
+                  rows={3}
+                  className='rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all resize-none'
+                  style={{
+                    backgroundColor: 'var(--bg-primary)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-primary)',
+                  }}
+                  placeholder='Catatan tambahan...'
+                />
+              </div>
+
+              <button
+                type='submit'
+                className='w-full mt-4 py-2.5 rounded-lg text-sm font-bold transition-transform active:scale-95'
+                style={{
+                  backgroundColor: 'var(--text-primary)',
+                  color: 'var(--text-inverse)',
+                }}
+              >
+                Simpan Perubahan
               </button>
             </form>
           </motion.div>

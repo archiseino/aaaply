@@ -46,6 +46,7 @@ class SyncAppendRequest(BaseModel):
     location: str = ""
     date_applied: str = ""
     method: str = ""
+    hr_email: str = ""
     status: str = "Applied"
     notes: str = ""
     url_desc: str = ""
@@ -55,6 +56,12 @@ class SyncUpdateRequest(BaseModel):
     sheet_id: str
     start_cell: str = "B7"
     row_index: int
+    company: Optional[str] = None
+    job_title: Optional[str] = None
+    location: Optional[str] = None
+    date_applied: Optional[str] = None
+    method: Optional[str] = None
+    hr_email: Optional[str] = None
     status: Optional[str] = None
     notes: Optional[str] = None
 
@@ -71,6 +78,7 @@ class SyncPutAppItem(BaseModel):
     location: str = ""
     date_applied: str = ""
     method: str = ""
+    hr_email: str = ""
     status: str = "Applied"
     notes: str = ""
 

@@ -104,9 +104,10 @@ function App() {
           id: `sheet-${s.row_index || idx}-${Date.now()}`,
           companyName: s.company,
           jobTitle: s.job_title,
-          hrEmail: '',
+          hrEmail: (s as any).email || '',
           location: s.location || '',
           method: s.method || '',
+          notes: (s as any).notes || '',
           dateApplied: s.date_applied || now,
           status: (s.status as JobApplication['status']) || 'Applied',
           sheetRowIndex: s.row_index,
@@ -623,16 +624,17 @@ function App() {
     startCell: localStorage.getItem('SOBAT_START_CELL') || startCell,
   });
 
-  const _reloadFromSheet = (apps: { row_index?: number; company: string; job_title: string; location?: string; date_applied?: string; method?: string; status: string }[]) => {
+  const _reloadFromSheet = (apps: { row_index?: number; company: string; job_title: string; location?: string; date_applied?: string; method?: string; email?: string; notes?: string; status: string }[]) => {
     if (!apps.length) return;
     const now = new Date().toISOString();
     setApplications(apps.map((s, idx) => ({
       id: `sheet-${s.row_index || idx}-${Date.now()}`,
       companyName: s.company,
       jobTitle: s.job_title,
-      hrEmail: '',
+      hrEmail: s.email || '',
       location: s.location || '',
       method: s.method || '',
+      notes: s.notes || '',
       dateApplied: s.date_applied || now,
       status: (s.status as JobApplication['status']) || 'Applied',
       sheetRowIndex: s.row_index,
@@ -645,7 +647,8 @@ function App() {
     const { success } = await syncAppend(sid, sc, {
       company: appData.company_name || '',
       job_title: appData.job_title || '',
-      method: appData.hr_email && appData.hr_email !== '-' ? `Email: ${appData.hr_email}` : '',
+      method: appData.hr_email && appData.hr_email !== '-' ? 'Email' : '',
+      email: appData.hr_email && appData.hr_email !== '-' ? appData.hr_email : '',
       status: 'Applied',
       date_applied: new Date().toISOString(),
       notes: '',
@@ -653,6 +656,29 @@ function App() {
     if (!success) return;
     const { apps } = await syncFromSheets(sid, sc);
     _reloadFromSheet(apps);
+  };
+
+  const handleEditSave = async (app: JobApplication) => {
+    setApplications(prev => prev.map(a => a.id === app.id ? app : a));
+    if (app.sheetRowIndex) {
+      const { sheetId: sid, startCell: sc } = getSheetCfg();
+      if (sid) {
+        const { success } = await syncUpdate(sid, sc, app.sheetRowIndex, {
+          company: app.companyName,
+          job_title: app.jobTitle,
+          location: app.location,
+          date_applied: app.dateApplied,
+          method: app.method,
+          email: app.hrEmail,
+          status: app.status,
+          notes: app.notes,
+        });
+        if (success) notify("Perubahan tersimpan ke Google Sheets ✅", "success");
+        else notify("Gagal sync ke Google Sheets", "error");
+      }
+    } else {
+      notify("Lamaran lokal diperbarui", "success");
+    }
   };
 
   const handleSyncFromSheets = async (): Promise<JobApplication[]> => {
@@ -682,8 +708,9 @@ function App() {
       location: newApp.location,
       date_applied: newApp.dateApplied,
       method: newApp.method || '',
+      email: newApp.hrEmail && newApp.hrEmail !== '-' ? newApp.hrEmail : '',
       status: newApp.status,
-      notes: '',
+      notes: newApp.notes || '',
     });
     if (!success) return;
     const { apps } = await syncFromSheets(sid, sc);
@@ -1033,6 +1060,7 @@ function App() {
                     location: app.location,
                     date_applied: app.dateApplied,
                     method: app.method || '',
+                    email: app.hrEmail && app.hrEmail !== '-' ? app.hrEmail : '',
                     status: app.status,
                     notes: '',
                   });
@@ -1057,6 +1085,7 @@ function App() {
                 onUpdateStatus={handleUpdateStatus} 
                 onDelete={handleDeleteApplication}
                 onEdit={handleEditApplication}
+                onEditSave={handleEditSave}
                 onAdd={handleAddManualApplication}
                 sheetId={sheetId}
                 onSyncFromSheets={handleSyncFromSheets}

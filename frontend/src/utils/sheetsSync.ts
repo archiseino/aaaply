@@ -7,6 +7,7 @@ export interface SheetApplication {
   location?: string;
   date_applied?: string;
   method?: string;
+  email?: string;
   status: string;
   notes?: string;
 }
@@ -34,6 +35,7 @@ export async function syncAppend(
     location?: string;
     date_applied?: string;
     method?: string;
+    email?: string;
     status?: string;
     notes?: string;
   }
@@ -50,6 +52,7 @@ export async function syncAppend(
         location: app.location || '',
         date_applied: app.date_applied || '',
         method: app.method || '',
+        hr_email: app.email || '',
         status: app.status || 'Applied',
         notes: app.notes || '',
       }),
@@ -68,7 +71,16 @@ export async function syncUpdate(
   sheetId: string,
   startCell: string,
   rowIndex: number,
-  data: { status?: string; notes?: string }
+  data: {
+    company?: string;
+    job_title?: string;
+    location?: string;
+    date_applied?: string;
+    method?: string;
+    email?: string;
+    status?: string;
+    notes?: string;
+  }
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch(`${API_BASE}/api/applications/sync`, {
@@ -78,6 +90,12 @@ export async function syncUpdate(
         sheet_id: sheetId,
         start_cell: startCell,
         row_index: rowIndex,
+        company: data.company,
+        job_title: data.job_title,
+        location: data.location,
+        date_applied: data.date_applied,
+        method: data.method,
+        hr_email: data.email,
         status: data.status,
         notes: data.notes,
       }),

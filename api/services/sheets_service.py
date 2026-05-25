@@ -69,7 +69,7 @@ class SheetsService:
         if not self._is_ready():
             return []
         col_idx, start_row = _parse_start_cell(start_cell)
-        num_cols = 9
+        num_cols = 10
         range_str = self._make_range(spreadsheet_id, start_cell, num_cols)
         try:
             client = self._get_client()
@@ -86,7 +86,7 @@ class SheetsService:
         if not self._is_ready():
             return None
         col_idx, start_row = _parse_start_cell(start_cell)
-        num_cols = 9
+        num_cols = 10
         range_str = self._make_range(spreadsheet_id, start_cell, num_cols)
         try:
             client = self._get_client()
@@ -159,7 +159,7 @@ class SheetsService:
         """Clear existing data range and write all rows in one batch."""
         if not self._is_ready():
             return False
-        range_str = self._make_range(spreadsheet_id, start_cell, 9)
+        range_str = self._make_range(spreadsheet_id, start_cell, 10)
         try:
             client = self._get_client()
             client.spreadsheets().values().clear(
