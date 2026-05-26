@@ -51,12 +51,12 @@ export function ApplyPage({
 }: ApplyPageProps) {
   return (
     <motion.div
-      key="apply"
+      key='apply'
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.2 }}
-      className="flex-1 flex flex-col md:flex-row w-full h-full overflow-y-auto md:overflow-hidden relative"
+      className='flex-1 flex flex-col md:flex-row w-full h-full overflow-y-auto md:overflow-hidden relative'
     >
       {isProcessing && <ProcessingOverlay />}
 

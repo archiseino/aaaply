@@ -105,7 +105,12 @@ export function useAIProcess(deps: {
   }, [file, textInput, deps]);
 
   useEffect(() => {
-    if ((file || textInput.trim()) && deps.selectedCV && !result && !deps.isProcessing) {
+    if (!(file || textInput.trim()) || !deps.selectedCV || result || deps.isProcessing) return;
+
+    const isManual = localStorage.getItem('SOBAT_MANUAL_MODE') === 'true';
+    if (isManual) {
+      setResult({});
+    } else {
       performAnalysis();
     }
   }, [file, textInput, deps.selectedCV, result, deps.isProcessing, performAnalysis]);
