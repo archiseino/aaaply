@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import logging
 from typing import Optional
 from google.oauth2 import service_account
@@ -32,21 +33,29 @@ class SheetsService:
         self._client = None
         self._sheet_id_cache: dict[str, int] = {}
 
-    def _get_credentials_path(self) -> Optional[str]:
-        return os.environ.get("GOOGLE_SERVICE_ACCOUNT_KEY")
+    def _get_creds(self) -> Optional[service_account.Credentials]:
+        raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_KEY", "")
+        if not raw:
+            logger.error("GOOGLE_SERVICE_ACCOUNT_KEY not set")
+            return None
+        try:
+            if raw.startswith("{"):
+                info = json.loads(raw)
+                return service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
+            return service_account.Credentials.from_service_account_file(raw, scopes=SCOPES)
+        except Exception as e:
+            logger.error("Failed to load credentials: %s", e)
+            return None
 
     def _is_ready(self) -> bool:
-        path = self._get_credentials_path()
-        if not path or not os.path.exists(path):
-            logger.error("GOOGLE_SERVICE_ACCOUNT_KEY not set or file not found")
-            return False
-        return True
+        return self._get_creds() is not None
 
     def _get_client(self):
         if self._client is not None:
             return self._client
-        path = self._get_credentials_path()
-        creds = service_account.Credentials.from_service_account_file(path, scopes=SCOPES)
+        creds = self._get_creds()
+        if not creds:
+            raise RuntimeError("Google Sheets credentials not configured")
         self._client = build("sheets", "v4", credentials=creds)
         return self._client
 
