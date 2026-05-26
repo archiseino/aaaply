@@ -27,6 +27,8 @@ async def sync_append(req: SyncAppendRequest):
             req.status,
             req.notes,
         ]
+        logger.info("sync_append: start_cell=%s row_count=%d next_no=%s row=%s",
+                     req.start_cell, len(existing), next_no, row)
         result = await sheets_service.append_row(req.sheet_id, req.start_cell, row)
         if result is None:
             raise HTTPException(status_code=502, detail="Gagal menyimpan ke Google Sheets")

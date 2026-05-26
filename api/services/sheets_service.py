@@ -85,7 +85,7 @@ class SheetsService:
                 spreadsheetId=spreadsheet_id, range=range_str
             ).execute()
             values = result.get("values", [])
-            return [row for row in values if row and any(cell.strip() for cell in row)]
+            return [row for row in values if row and any(c is not None and str(c).strip() for c in row)]
         except HttpError as e:
             logger.error(f"read_all_rows error: {e}")
             return []
@@ -102,10 +102,12 @@ class SheetsService:
                 spreadsheetId=spreadsheet_id,
                 range=range_str,
                 valueInputOption="USER_ENTERED",
-                insertDataOption="INSERT_ROWS",
+                includeValuesInResponse=True,
                 body={"values": [row_data]}
             ).execute()
             updates = result.get("updates", {})
+            table_range = updates.get("tableRange", "N/A")
+            logger.info(f"append_row: range=%s, tableRange=%s, rows=%d", range_str, table_range, updates.get("updatedRows", 0))
             return updates.get("updatedRows", 1)
         except HttpError as e:
             logger.error(f"append_row error: {e}")
