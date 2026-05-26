@@ -98,17 +98,23 @@ class SheetsService:
         range_str = self._make_range(spreadsheet_id, start_cell, num_cols)
         try:
             client = self._get_client()
-            result = client.spreadsheets().values().append(
+            existing = client.spreadsheets().values().get(
                 spreadsheetId=spreadsheet_id,
                 range=range_str,
+            ).execute()
+            rows = existing.get("values", [])
+            next_row = start_row + len(rows)
+
+            target_range = f"{self._col_letter(col_idx)}{next_row}:{self._end_col_letter(col_idx, len(row_data))}{next_row}"
+            logger.info("append_row: target=%s existing_rows=%d", target_range, len(rows))
+
+            result = client.spreadsheets().values().update(
+                spreadsheetId=spreadsheet_id,
+                range=target_range,
                 valueInputOption="USER_ENTERED",
-                includeValuesInResponse=True,
                 body={"values": [row_data]}
             ).execute()
-            updates = result.get("updates", {})
-            table_range = updates.get("tableRange", "N/A")
-            logger.info(f"append_row: range=%s, tableRange=%s, rows=%d", range_str, table_range, updates.get("updatedRows", 0))
-            return updates.get("updatedRows", 1)
+            return result.get("updatedRows", 1)
         except HttpError as e:
             logger.error(f"append_row error: {e}")
             return None

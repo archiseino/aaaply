@@ -66,11 +66,13 @@ export async function syncAppAndReload(appData: {
   company_name?: string;
   job_title?: string;
   hr_email?: string;
+  method?: string;
 }): Promise<JobApplication[] | null> {
   return syncJobAppAndReload({
     company: appData.company_name || '',
     job_title: appData.job_title || '',
     date_applied: new Date().toISOString(),
+    method: appData.method || '',
     email: appData.hr_email,
     status: 'Applied',
   });
