@@ -1,12 +1,20 @@
-[tool.pytest.ini_options]
-asyncio_mode = "auto"
-testpaths = ["api/tests"]
-python_files = ["test_*.py"]
-
-[tool.coverage.run]
-source = ["api"]
-omit = ["api/tests/*"]
-
-[tool.coverage.report]
-show_missing = true
-fail_under = 70
+[project]
+name = "sobatapply-api"
+version = "1.0.0"
+description = "SobatApply AI Job Application Assistant API"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "google-generativeai",
+    "google-auth>=2.0.0",
+    "google-auth-oauthlib>=1.0.0",
+    "google-api-python-client>=2.0.0",
+    "pydantic",
+    "python-multipart",
+    "Pillow",
+    "httpx",
+    "beautifulsoup4",
+    "python-dotenv",
+    "redis",
+]
