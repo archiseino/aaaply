@@ -107,12 +107,7 @@ export function useAIProcess(deps: {
   useEffect(() => {
     if (!(file || textInput.trim()) || !deps.selectedCV || result || deps.isProcessing) return;
 
-    const isManual = localStorage.getItem('SOBAT_MANUAL_MODE') === 'true';
-    if (isManual) {
-      setResult({});
-    } else {
-      performAnalysis();
-    }
+    performAnalysis();
   }, [file, textInput, deps.selectedCV, result, deps.isProcessing, performAnalysis]);
 
   const handleFileUpload = useCallback((uploadedFile: File) => {

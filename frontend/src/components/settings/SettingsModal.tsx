@@ -30,7 +30,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [gmailApiEnabled, setGmailApiEnabled] = useState(false);
   const [outlookApiEnabled, setOutlookApiEnabled] = useState(false);
-  const [manualMode, setManualMode] = useState(false);
   const [sheetId, setSheetId] = useState('');
   const [startCell, setStartCell] = useState('B7');
 
@@ -47,7 +46,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
     setOutlookApiEnabled(
       localStorage.getItem('OUTLOOK_API_ENABLED') === 'true',
     );
-    setManualMode(localStorage.getItem('SOBAT_MANUAL_MODE') === 'true');
     const storedSheetId = localStorage.getItem('SOBAT_SHEET_ID') || '';
     setSheetId(storedSheetId);
     const storedStartCell = localStorage.getItem('SOBAT_START_CELL') || 'B7';
@@ -59,7 +57,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
     localStorage.setItem('APPLYBOT_CVS', JSON.stringify(cvHistory));
     localStorage.setItem('GMAIL_API_ENABLED', String(gmailApiEnabled));
     localStorage.setItem('OUTLOOK_API_ENABLED', String(outlookApiEnabled));
-    localStorage.setItem('SOBAT_MANUAL_MODE', String(manualMode));
     localStorage.setItem('SOBAT_SHEET_ID', sheetId);
     localStorage.setItem('SOBAT_START_CELL', startCell);
     setSaved(true);
@@ -78,24 +75,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
         try {
           const formData = new FormData();
           formData.append('file', file);
-          const currentApiKey =
-            apiKey || localStorage.getItem('GEMINI_API_KEY');
-          if (!currentApiKey) {
-            const msg =
-              'Harap isi dan simpan API Key terlebih dahulu sebelum mengunggah CV.';
-            if (notify) notify(msg, 'warning');
-            else alert(msg);
-            setIsExtracting(false);
-            return;
-          }
+          const currentApiKey = apiKey || localStorage.getItem('GEMINI_API_KEY');
+          const headers = currentApiKey
+            ? {
+                'Content-Type': 'multipart/form-data',
+                'x-api-key': currentApiKey,
+              }
+            : {
+                'Content-Type': 'multipart/form-data',
+              };
           const res = await axios.post(
             `${API_BASE_URL}/api/extract-cv`,
             formData,
             {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-                'x-api-key': currentApiKey,
-              },
+              headers,
             },
           );
           const newCV: CVFile = {
@@ -244,34 +237,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
                 >
                   Jika dimatikan, tombol Gmail/Outlook akan menggunakan cara
                   standar tanpa otomatisasi pelampiran CV.
-                </p>
-              </div>
-              <hr style={{ borderColor: 'var(--border)' }} />
-              <div className='flex flex-col gap-3'>
-                <label
-                  className='text-sm font-semibold'
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  Mode Manual (Skip AI)
-                </label>
-                <label className='flex items-center gap-3 cursor-pointer'>
-                  <input
-                    type='checkbox'
-                    checked={manualMode}
-                    onChange={(e) => setManualMode(e.target.checked)}
-                    className='w-4 h-4 rounded'
-                  />
-                  <span
-                    className='text-sm'
-                    style={{ color: 'var(--text-primary)' }}
-                  >
-                    Langsung tampilkan form email kosong (tanpa AI)
-                  </span>
-                </label>
-                <p className='text-xs' style={{ color: 'var(--text-muted)' }}>
-                  Saat diaktifkan, upload poster + pilih CV akan langsung
-                  membuka form email tanpa proses AI. Berguna jika koneksi lambat
-                  atau ingin menulis manual.
                 </p>
               </div>
               <hr style={{ borderColor: 'var(--border)' }} />

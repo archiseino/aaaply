@@ -55,7 +55,6 @@ function App() {
     setSelectedCV,
     setCvHistory,
     loadCVHistory,
-    handleCVUpload,
   } = useCVManager({ notify, setIsProcessing });
 
   const {
@@ -244,16 +243,6 @@ function App() {
     setInputType('text');
     setActiveTab('apply');
 
-    const isManual = localStorage.getItem('SOBAT_MANUAL_MODE') === 'true';
-    if (isManual) {
-      setResult({
-        hr_email: job.email || '',
-        company_name: job.company || '',
-        job_title: job.title || '',
-      });
-      return;
-    }
-
     if (isProcessing) return;
     setIsProcessing(true);
 
@@ -392,7 +381,6 @@ function App() {
               cvHistory={cvHistory}
               selectedCV={selectedCV}
               onCVChange={setSelectedCV}
-              onCVUpload={handleCVUpload}
               onSend={handleSend}
               onCopyFileCV={handleCopyFileCV}
               onChange={setResult}

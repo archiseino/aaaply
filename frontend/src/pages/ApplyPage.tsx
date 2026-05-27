@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion';
 import { InputPanel } from '../components/apply/InputPanel';
-import { CVPanel } from '../components/apply/CVPanel';
 import { ProcessingOverlay } from '../components/apply/ProcessingOverlay';
 import type { ResultData } from '../hooks/useAIProcess';
 import type { CVItem } from '../hooks/useCVManager';
 import type { ToastType } from '../components/ui/Toast';
+import ResultForm from '../components/apply/ResultForm';
 
 interface ApplyPageProps {
   isProcessing: boolean;
@@ -21,7 +21,6 @@ interface ApplyPageProps {
   cvHistory: CVItem[];
   selectedCV: string;
   onCVChange: (id: string) => void;
-  onCVUpload: (file: File) => void;
   onSend: (method: 'outlook' | 'gmail' | 'native') => void;
   onCopyFileCV: () => Promise<boolean>;
   onChange: (data: ResultData) => void;
@@ -43,7 +42,6 @@ export function ApplyPage({
   cvHistory,
   selectedCV,
   onCVChange,
-  onCVUpload,
   onSend,
   onCopyFileCV,
   onChange,
@@ -72,19 +70,18 @@ export function ApplyPage({
         isImage={isImage}
       />
 
-      <CVPanel
-        result={result}
-        cvHistory={cvHistory}
-        selectedCV={selectedCV}
-        onCVChange={onCVChange}
-        onCVUpload={onCVUpload}
-        onSend={onSend}
-        onCopyFileCV={onCopyFileCV}
-        onChange={onChange}
-        notify={notify}
-        file={file}
-        textInput={textInput}
-      />
+        <ResultForm
+          key='result-form'
+          data={result}
+          cvHistory={cvHistory}
+          selectedCV={selectedCV}
+          onCVChange={onCVChange}
+          onChange={onChange}
+          onSend={onSend}
+          onCopyFileCV={onCopyFileCV}
+          notify={notify}
+        />
+
     </motion.div>
   );
 }
