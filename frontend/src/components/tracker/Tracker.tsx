@@ -157,6 +157,8 @@ const Tracker: React.FC<TrackerProps> = ({
     dateApplied: new Date().toISOString(),
   });
   const [isSyncing, setIsSyncing] = useState(false);
+  const [openNotesAccordionId, setOpenNotesAccordionId] = useState<string | null>(null);
+  const [notesDraft, setNotesDraft] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -228,6 +230,26 @@ const Tracker: React.FC<TrackerProps> = ({
       { name: 'Decline', value: data.Decline },
     ].filter((item) => item.value > 0);
   }, [applications]);
+
+  const handleNotesUpdate = (app: JobApplication, nextNotes: string) => {
+    if (!onEditSave) return;
+    onEditSave({ ...app, notes: nextNotes });
+  };
+
+  const toggleNotesAccordion = (app: JobApplication) => {
+    if (openNotesAccordionId === app.id) {
+      setOpenNotesAccordionId(null);
+      return;
+    }
+
+    setOpenNotesAccordionId(app.id);
+    setNotesDraft(app.notes || '');
+  };
+
+  const saveNotesDraft = (app: JobApplication) => {
+    handleNotesUpdate(app, notesDraft);
+    setOpenNotesAccordionId(null);
+  };
 
   const barData = useMemo(() => {
     const months: Record<string, number> = {};
@@ -490,6 +512,12 @@ const Tracker: React.FC<TrackerProps> = ({
                   Lokasi
                 </th>
                 <th
+                  className='p-4 font-semibold'
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                >
+                  Catatan
+                </th>
+                <th
                   className='p-4 font-semibold text-right'
                   style={{ borderBottom: '1px solid var(--border)' }}
                 >
@@ -500,7 +528,7 @@ const Tracker: React.FC<TrackerProps> = ({
             <tbody>
               {filteredApplications.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className='p-12 text-center'>
+                  <td colSpan={7} className='p-12 text-center'>
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -604,6 +632,86 @@ const Tracker: React.FC<TrackerProps> = ({
                       >
                         {app.location || '-'}
                       </span>
+                    </td>
+                    <td className='p-4'>
+                      <div className='flex flex-col gap-2 w-full max-w-[280px]'>
+                        <button
+                          type='button'
+                          onClick={() => toggleNotesAccordion(app)}
+                          className='w-full inline-flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-left'
+                          style={{
+                            backgroundColor: 'var(--bg-elevated)',
+                            color: app.notes ? 'var(--text-primary)' : 'var(--text-muted)',
+                            border: '1px solid var(--border)',
+                          }}
+                          title='Edit catatan'
+                        >
+                          <span className='truncate text-left'>
+                            {app.notes ? 'Catatan tersedia' : 'Tambah catatan'}
+                          </span>
+                          <ChevronDown
+                            size={12}
+                            className={`shrink-0 opacity-70 transition-transform ${openNotesAccordionId === app.id ? 'rotate-180' : ''}`}
+                          />
+                        </button>
+                        <p
+                          className='text-[11px] leading-4 rounded-md px-0'
+                          style={{
+                            color: 'var(--text-muted)',
+                            maxHeight: '2.5rem',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {app.notes || 'Tidak ada catatan tersimpan.'}
+                        </p>
+                        {openNotesAccordionId === app.id && (
+                          <div
+                            className='rounded-lg p-3 flex flex-col gap-3'
+                            style={{
+                              backgroundColor: 'var(--bg-elevated)',
+                              border: '1px solid var(--border)',
+                            }}
+                          >
+                            <textarea
+                              value={notesDraft}
+                              onChange={(e) => setNotesDraft(e.target.value)}
+                              rows={5}
+                              className='w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all resize-y'
+                              style={{
+                                backgroundColor: 'var(--bg-card)',
+                                border: '1px solid var(--border)',
+                                color: 'var(--text-primary)',
+                              }}
+                              placeholder='Tulis catatan di sini...'
+                            />
+                            <div className='flex items-center justify-end gap-2'>
+                              <button
+                                type='button'
+                                onClick={() => setOpenNotesAccordionId(null)}
+                                className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
+                                style={{
+                                  backgroundColor: 'var(--bg-card)',
+                                  color: 'var(--text-secondary)',
+                                  border: '1px solid var(--border)',
+                                }}
+                              >
+                                Batal
+                              </button>
+                              <button
+                                type='button'
+                                onClick={() => saveNotesDraft(app)}
+                                className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
+                                style={{
+                                  backgroundColor: 'var(--text-primary)',
+                                  color: 'var(--text-inverse)',
+                                }}
+                              >
+                                Simpan Catatan
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className='p-4 text-right'>
                       <div className='flex items-center justify-end gap-2'>
@@ -835,6 +943,71 @@ const Tracker: React.FC<TrackerProps> = ({
                 </div>
                 <div className='flex items-center gap-2 text-[11px] px-1' style={{ color: 'var(--text-muted)' }}>
                   <span>Lewat: {app.method || '-'}</span>
+                </div>
+
+                <div className='flex flex-col gap-1.5 px-1'>
+                  <span className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-muted)' }}>
+                    Catatan
+                  </span>
+                  <div className='rounded-xl overflow-hidden' style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+                    <button
+                      type='button'
+                      onClick={() => toggleNotesAccordion(app)}
+                      className='w-full flex items-center justify-between gap-3 px-3 py-3 text-left'
+                    >
+                      <div className='min-w-0'>
+                        <p className='text-xs font-semibold' style={{ color: 'var(--text-primary)' }}>
+                          {app.notes ? 'Catatan tersedia' : 'Tambah catatan'}
+                        </p>
+                        <p className='text-[11px] mt-1' style={{ color: 'var(--text-muted)', maxHeight: '2.5rem', overflow: 'hidden' }}>
+                          {app.notes || 'Ketuk untuk menulis catatan panjang yang akan tersimpan ke Sheets.'}
+                        </p>
+                      </div>
+                      <ChevronDown size={12} className={`shrink-0 transition-transform ${openNotesAccordionId === app.id ? 'rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }} />
+                    </button>
+
+                    {openNotesAccordionId === app.id && (
+                      <div className='px-3 pb-3 pt-0 flex flex-col gap-3'>
+                        <textarea
+                          value={notesDraft}
+                          onChange={(e) => setNotesDraft(e.target.value)}
+                          rows={5}
+                          className='w-full rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 transition-all resize-y'
+                          style={{
+                            backgroundColor: 'var(--bg-card)',
+                            border: '1px solid var(--border)',
+                            color: 'var(--text-primary)',
+                          }}
+                          placeholder='Tulis catatan di sini...'
+                        />
+                        <div className='flex items-center justify-end gap-2'>
+                          <button
+                            type='button'
+                            onClick={() => setOpenNotesAccordionId(null)}
+                            className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
+                            style={{
+                              backgroundColor: 'var(--bg-card)',
+                              color: 'var(--text-secondary)',
+                              border: '1px solid var(--border)',
+                            }}
+                          >
+                            Batal
+                          </button>
+                          <button
+                            type='button'
+                            onClick={() => saveNotesDraft(app)}
+                            className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
+                            style={{
+                              backgroundColor: 'var(--text-primary)',
+                              color: 'var(--text-inverse)',
+                            }}
+                          >
+                            Simpan
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className='flex justify-between items-center gap-3'>
