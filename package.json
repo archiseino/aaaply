@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n be,fe -c blue,green \".venv/bin/python run_backend.py\" \"cd frontend && npm run dev\"",
+    "dev": "concurrently -n be,fe -c blue,green \"venv\\Scripts\\python run_backend.py\" \"cd frontend && npm run dev\"",
     "build": "cd frontend && npm install && npm run build",
     "install": "cd frontend && npm install"
   },

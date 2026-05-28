@@ -35,19 +35,19 @@ import ApplicationSearch from './ApplicationSearch';
 import StatusFilter from './StatusFilter';
 
 export interface JobApplication {
-    id: string;
-    companyName: string;
-    jobTitle: string;
-    hrEmail: string;
-    dateApplied: string;
-    status: 'Applied' | 'No Response' | 'Interviewing' | 'Approve' | 'Decline';
-    subject?: string;
-    body?: string;
-    contextText?: string;
-    location?: string;
-    method?: string;
-    notes?: string;
-    sheetRowIndex?: number;
+  id: string;
+  companyName: string;
+  jobTitle: string;
+  hrEmail: string;
+  dateApplied: string;
+  status: 'Applied' | 'No Response' | 'Interviewing' | 'Approve' | 'Decline';
+  subject?: string;
+  body?: string;
+  contextText?: string;
+  location?: string;
+  method?: string;
+  notes?: string;
+  sheetRowIndex?: number;
 }
 
 interface TrackerProps {
@@ -112,20 +112,38 @@ function safeFormatDate(dateStr: string): string {
   if (!dateStr) return '-';
   const d = new Date(dateStr);
   if (!isNaN(d.getTime())) {
-    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    return d.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
   }
   const parts = dateStr.match(/^(\d{1,2})\s+(\w+)\s+(\d{4})$/);
   if (parts) {
     const idMonths: Record<string, string> = {
-      jan:'01',feb:'02',mar:'03',apr:'04',mei:'05',jun:'06',
-      jul:'07',agu:'08',sep:'09',okt:'10',nov:'11',des:'12',
+      jan: '01',
+      feb: '02',
+      mar: '03',
+      apr: '04',
+      mei: '05',
+      jun: '06',
+      jul: '07',
+      agu: '08',
+      sep: '09',
+      okt: '10',
+      nov: '11',
+      des: '12',
     };
     const m = idMonths[parts[2].toLowerCase()];
     if (m) {
-      const iso = `${parts[3]}-${m}-${parseInt(parts[1]).toString().padStart(2,'0')}`;
+      const iso = `${parts[3]}-${m}-${parseInt(parts[1]).toString().padStart(2, '0')}`;
       const d2 = new Date(iso);
       if (!isNaN(d2.getTime())) {
-        return d2.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+        return d2.toLocaleDateString('id-ID', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        });
       }
     }
   }
@@ -148,7 +166,9 @@ const Tracker: React.FC<TrackerProps> = ({
     targetId: string | null;
     isSynced: boolean;
   }>({ isOpen: false, targetId: null, isSynced: false });
-  const [editConfirmApp, setEditConfirmApp] = useState<JobApplication | null>(null);
+  const [editConfirmApp, setEditConfirmApp] = useState<JobApplication | null>(
+    null,
+  );
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<JobApplication | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -157,7 +177,9 @@ const Tracker: React.FC<TrackerProps> = ({
     dateApplied: new Date().toISOString(),
   });
   const [isSyncing, setIsSyncing] = useState(false);
-  const [openNotesAccordionId, setOpenNotesAccordionId] = useState<string | null>(null);
+  const [openNotesAccordionId, setOpenNotesAccordionId] = useState<
+    string | null
+  >(null);
   const [notesDraft, setNotesDraft] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -218,7 +240,13 @@ const Tracker: React.FC<TrackerProps> = ({
   }, [applications, debouncedSearch, statusFilter]);
 
   const stats = useMemo(() => {
-    const data: Record<string, number> = { Applied: 0, 'No Response': 0, Interviewing: 0, Approve: 0, Decline: 0 };
+    const data: Record<string, number> = {
+      Applied: 0,
+      'No Response': 0,
+      Interviewing: 0,
+      Approve: 0,
+      Decline: 0,
+    };
     applications.forEach((app) => {
       data[app.status] = (data[app.status] || 0) + 1;
     });
@@ -512,12 +540,6 @@ const Tracker: React.FC<TrackerProps> = ({
                   Lokasi
                 </th>
                 <th
-                  className='p-4 font-semibold'
-                  style={{ borderBottom: '1px solid var(--border)' }}
-                >
-                  Catatan
-                </th>
-                <th
                   className='p-4 font-semibold text-right'
                   style={{ borderBottom: '1px solid var(--border)' }}
                 >
@@ -528,7 +550,7 @@ const Tracker: React.FC<TrackerProps> = ({
             <tbody>
               {filteredApplications.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className='p-12 text-center'>
+                  <td colSpan={6} className='p-12 text-center'>
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -567,242 +589,267 @@ const Tracker: React.FC<TrackerProps> = ({
                 </tr>
               ) : (
                 filteredApplications.map((app) => (
-                  <motion.tr
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    key={app.id}
-                    className='transition-colors hover:bg-white/[0.02]'
-                    style={{ borderBottom: '1px solid var(--border-muted)' }}
-                  >
-                    <td className='p-4'>
-                      <div className='flex flex-col'>
-                        <span
-                          className='font-bold flex items-center gap-2'
-                          style={{ color: 'var(--text-primary)' }}
-                        >
-                          <Briefcase
-                            size={14}
+                  <React.Fragment key={app.id}>
+                    <motion.tr
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className='transition-colors hover:bg-white/[0.02]'
+                    >
+                      <td className='p-4'>
+                        <div className='flex flex-col'>
+                          <span
+                            className='font-bold flex items-center gap-2'
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            <Briefcase
+                              size={14}
+                              style={{ color: 'var(--text-secondary)' }}
+                            />
+                            {app.jobTitle || 'Posisi Tidak Diketahui'}
+                          </span>
+                          <span
+                            className='text-sm flex items-center gap-2 mt-1'
                             style={{ color: 'var(--text-secondary)' }}
-                          />
-                          {app.jobTitle || 'Posisi Tidak Diketahui'}
-                        </span>
+                          >
+                            <Building2 size={14} />
+                            {app.companyName || 'Perusahaan Tidak Diketahui'}
+                            <span style={{ color: 'var(--text-muted)' }}>•</span>
+                            <span className='text-xs'>{app.hrEmail}</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td className='p-4'>
                         <span
-                          className='text-sm flex items-center gap-2 mt-1'
+                          className='text-sm flex items-center gap-2'
                           style={{ color: 'var(--text-secondary)' }}
                         >
-                          <Building2 size={14} />
-                          {app.companyName || 'Perusahaan Tidak Diketahui'}
-                          <span style={{ color: 'var(--text-muted)' }}>•</span>
-                          <span className='text-xs'>{app.hrEmail}</span>
-                        </span>
-                      </div>
-                    </td>
-                    <td className='p-4'>
-                      <span
-                        className='text-sm flex items-center gap-2'
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        <Calendar
-                          size={14}
-                          style={{ color: 'var(--text-muted)' }}
-                        />
-                        {safeFormatDate(app.dateApplied)}
-                      </span>
-                    </td>
-                    <td className='p-4'>
-                      <span
-                        className='text-sm'
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        {app.method || '-'}
-                      </span>
-                    </td>
-                    <td className='p-4'>
-                      <span
-                        className='text-sm'
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        {app.hrEmail && app.hrEmail !== '-' ? app.hrEmail : '-'}
-                      </span>
-                    </td>
-                    <td className='p-4'>
-                      <span
-                        className='text-sm'
-                        style={{ color: 'var(--text-secondary)' }}
-                      >
-                        {app.location || '-'}
-                      </span>
-                    </td>
-                    <td className='p-4'>
-                      <div className='flex flex-col gap-2 w-full max-w-[280px]'>
-                        <button
-                          type='button'
-                          onClick={() => toggleNotesAccordion(app)}
-                          className='w-full inline-flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all text-left'
-                          style={{
-                            backgroundColor: 'var(--bg-elevated)',
-                            color: app.notes ? 'var(--text-primary)' : 'var(--text-muted)',
-                            border: '1px solid var(--border)',
-                          }}
-                          title='Edit catatan'
-                        >
-                          <span className='truncate text-left'>
-                            {app.notes ? 'Catatan tersedia' : 'Tambah catatan'}
-                          </span>
-                          <ChevronDown
-                            size={12}
-                            className={`shrink-0 opacity-70 transition-transform ${openNotesAccordionId === app.id ? 'rotate-180' : ''}`}
+                          <Calendar
+                            size={14}
+                            style={{ color: 'var(--text-muted)' }}
                           />
-                        </button>
-                        <p
-                          className='text-[11px] leading-4 rounded-md px-0'
-                          style={{
-                            color: 'var(--text-muted)',
-                            maxHeight: '2.5rem',
-                            overflow: 'hidden',
-                          }}
+                          {safeFormatDate(app.dateApplied)}
+                        </span>
+                      </td>
+                      <td className='p-4'>
+                        <span
+                          className='text-sm'
+                          style={{ color: 'var(--text-secondary)' }}
                         >
-                          {app.notes || 'Tidak ada catatan tersimpan.'}
-                        </p>
-                        {openNotesAccordionId === app.id && (
-                          <div
-                            className='rounded-lg p-3 flex flex-col gap-3'
-                            style={{
-                              backgroundColor: 'var(--bg-elevated)',
-                              border: '1px solid var(--border)',
-                            }}
-                          >
-                            <textarea
-                              value={notesDraft}
-                              onChange={(e) => setNotesDraft(e.target.value)}
-                              rows={5}
-                              className='w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all resize-y'
-                              style={{
-                                backgroundColor: 'var(--bg-card)',
-                                border: '1px solid var(--border)',
-                                color: 'var(--text-primary)',
-                              }}
-                              placeholder='Tulis catatan di sini...'
-                            />
-                            <div className='flex items-center justify-end gap-2'>
-                              <button
-                                type='button'
-                                onClick={() => setOpenNotesAccordionId(null)}
-                                className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
-                                style={{
-                                  backgroundColor: 'var(--bg-card)',
-                                  color: 'var(--text-secondary)',
-                                  border: '1px solid var(--border)',
-                                }}
-                              >
-                                Batal
-                              </button>
-                              <button
-                                type='button'
-                                onClick={() => saveNotesDraft(app)}
-                                className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
-                                style={{
-                                  backgroundColor: 'var(--text-primary)',
-                                  color: 'var(--text-inverse)',
-                                }}
-                              >
-                                Simpan Catatan
-                              </button>
-                            </div>
+                          {app.method || '-'}
+                        </span>
+                      </td>
+                      <td className='p-4'>
+                        <span
+                          className='text-sm'
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          {app.hrEmail && app.hrEmail !== '-' ? app.hrEmail : '-'}
+                        </span>
+                      </td>
+                      <td className='p-4'>
+                        <span
+                          className='text-sm'
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          {app.location || '-'}
+                        </span>
+                      </td>
+                      <td className='p-4 text-right'>
+                        <div className='flex items-center justify-end gap-2'>
+                          <div className='relative inline-block text-left'>
+                            <button
+                              onClick={() =>
+                                setOpenDropdownId(
+                                  openDropdownId === app.id ? null : app.id,
+                                )
+                              }
+                              className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all'
+                              style={statusStyles[app.status]}
+                            >
+                              {statusIcons[app.status]} {app.status}{' '}
+                              <ChevronDown
+                                size={12}
+                                className='ml-1 opacity-70'
+                              />
+                            </button>
+                            {openDropdownId === app.id && (
+                              <>
+                                <div
+                                  className='fixed inset-0 z-10'
+                                  onClick={() => setOpenDropdownId(null)}
+                                ></div>
+                                <div
+                                  className='absolute right-0 mt-2 w-36 rounded-lg shadow-xl z-20 overflow-hidden'
+                                  style={{
+                                    backgroundColor: 'var(--bg-card)',
+                                    border: '1px solid var(--border)',
+                                  }}
+                                >
+                                  {(
+                                    [
+                                      'Applied',
+                                      'No Response',
+                                      'Interviewing',
+                                      'Approve',
+                                      'Decline',
+                                    ] as const
+                                  ).map((s) => (
+                                    <button
+                                      key={s}
+                                      onClick={() => {
+                                        onUpdateStatus(app.id, s);
+                                        setOpenDropdownId(null);
+                                      }}
+                                      className='w-full text-left px-4 py-2 text-sm transition-colors'
+                                      style={{ color: 'var(--text-secondary)' }}
+                                    >
+                                      {s}
+                                    </button>
+                                  ))}
+                                </div>
+                              </>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className='p-4 text-right'>
-                      <div className='flex items-center justify-end gap-2'>
-                        <div className='relative inline-block text-left'>
+                          <button
+                            onClick={() => {
+                              setEditingApp(app);
+                              setIsEditModalOpen(true);
+                            }}
+                            className='p-1.5 rounded-md transition-colors'
+                            style={{ color: 'var(--text-muted)' }}
+                            title='Edit Lamaran'
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (app.sheetRowIndex) setEditConfirmApp(app);
+                              else onEdit(app);
+                            }}
+                            className='p-1.5 rounded-md transition-colors'
+                            style={{ color: 'var(--text-muted)' }}
+                            title='Kirim Email Lamaran'
+                          >
+                            <Send size={16} />
+                          </button>
                           <button
                             onClick={() =>
-                              setOpenDropdownId(
-                                openDropdownId === app.id ? null : app.id,
-                              )
+                              setConfirmModal({
+                                isOpen: true,
+                                targetId: app.id,
+                                isSynced: !!app.sheetRowIndex,
+                              })
                             }
-                            className='inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all'
-                            style={statusStyles[app.status]}
+                            className='p-1.5 rounded-md transition-colors text-rose-500/60 hover:text-rose-500'
+                            title='Hapus Lamaran'
                           >
-                            {statusIcons[app.status]} {app.status}{' '}
-                            <ChevronDown
-                              size={12}
-                              className='ml-1 opacity-70'
-                            />
+                            <Trash2 size={16} />
                           </button>
-                          {openDropdownId === app.id && (
-                            <>
+                        </div>
+                      </td>
+                    </motion.tr>
+                    <tr
+                      style={{ borderBottom: '1px solid var(--border-muted)' }}
+                    >
+                      <td colSpan={6} className='p-0'>
+                        <div className='pl-8 pr-4 pb-3 pt-0'>
+                          <div className='flex flex-col gap-2 w-full max-w-[560px]'>
+                            <button
+                              type='button'
+                              onClick={() => toggleNotesAccordion(app)}
+                              className='w-full inline-flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left'
+                              style={{
+                                backgroundColor: 'var(--bg-elevated)',
+                                color: app.notes
+                                  ? 'var(--text-primary)'
+                                  : 'var(--text-muted)',
+                                border: '1px solid var(--border)',
+                              }}
+                              title='Edit catatan'
+                            >
+                              <span className='truncate text-left flex items-center gap-2'>
+                                <span>
+                                  {app.notes
+                                    ? 'Catatan tersedia'
+                                    : 'Tambah catatan'}
+                                </span>
+                                {app.notes && (
+                                  <span
+                                    className='text-[10px] opacity-60 font-normal'
+                                    style={{ color: 'var(--text-muted)' }}
+                                  >
+                                    {app.notes.length} karakter
+                                  </span>
+                                )}
+                              </span>
+                              <ChevronDown
+                                size={12}
+                                className={`shrink-0 opacity-70 transition-transform ${openNotesAccordionId === app.id ? 'rotate-180' : ''}`}
+                              />
+                            </button>
+                            {openNotesAccordionId === app.id ? (
                               <div
-                                className='fixed inset-0 z-10'
-                                onClick={() => setOpenDropdownId(null)}
-                              ></div>
-                              <div
-                                className='absolute right-0 mt-2 w-36 rounded-lg shadow-xl z-20 overflow-hidden'
+                                className='rounded-lg p-3 flex flex-col gap-3'
                                 style={{
-                                  backgroundColor: 'var(--bg-card)',
+                                  backgroundColor: 'var(--bg-elevated)',
                                   border: '1px solid var(--border)',
                                 }}
                               >
-                                {(
-                                  [
-                                    'Applied',
-                                    'No Response',
-                                    'Interviewing',
-                                    'Approve',
-                                    'Decline',
-                                  ] as const
-                                ).map((s) => (
+                                <textarea
+                                  value={notesDraft}
+                                  onChange={(e) =>
+                                    setNotesDraft(e.target.value)
+                                  }
+                                  rows={4}
+                                  className='w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all resize-y'
+                                  style={{
+                                    backgroundColor: 'var(--bg-card)',
+                                    border: '1px solid var(--border)',
+                                    color: 'var(--text-primary)',
+                                  }}
+                                  placeholder='Tulis catatan di sini...'
+                                />
+                                <div className='flex items-center justify-end gap-2'>
                                   <button
-                                    key={s}
-                                    onClick={() => {
-                                      onUpdateStatus(app.id, s);
-                                      setOpenDropdownId(null);
+                                    type='button'
+                                    onClick={() =>
+                                      setOpenNotesAccordionId(null)
+                                    }
+                                    className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
+                                    style={{
+                                      backgroundColor: 'var(--bg-card)',
+                                      color: 'var(--text-secondary)',
+                                      border: '1px solid var(--border)',
                                     }}
-                                    className='w-full text-left px-4 py-2 text-sm transition-colors'
-                                    style={{ color: 'var(--text-secondary)' }}
                                   >
-                                    {s}
+                                    Batal
                                   </button>
-                                ))}
+                                  <button
+                                    type='button'
+                                    onClick={() => saveNotesDraft(app)}
+                                    className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
+                                    style={{
+                                      backgroundColor: 'var(--text-primary)',
+                                      color: 'var(--text-inverse)',
+                                    }}
+                                  >
+                                    Simpan Catatan
+                                  </button>
+                                </div>
                               </div>
-                            </>
-                          )}
+                            ) : app.notes ? (
+                              <p
+                                className='text-xs leading-5 rounded-md px-0 whitespace-pre-wrap'
+                                style={{ color: 'var(--text-muted)' }}
+                              >
+                                {app.notes}
+                              </p>
+                            ) : null}
+                          </div>
                         </div>
-                        <button
-                          onClick={() => {
-                            setEditingApp(app);
-                            setIsEditModalOpen(true);
-                          }}
-                          className='p-1.5 rounded-md transition-colors'
-                          style={{ color: 'var(--text-muted)' }}
-                          title='Edit Lamaran'
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (app.sheetRowIndex) setEditConfirmApp(app);
-                            else onEdit(app);
-                          }}
-                          className='p-1.5 rounded-md transition-colors'
-                          style={{ color: 'var(--text-muted)' }}
-                          title='Kirim Email Lamaran'
-                        >
-                          <Send size={16} />
-                        </button>
-                        <button
-                          onClick={() =>
-                            setConfirmModal({ isOpen: true, targetId: app.id, isSynced: !!app.sheetRowIndex })
-                          }
-                          className='p-1.5 rounded-md transition-colors text-rose-500/60 hover:text-rose-500'
-                          title='Hapus Lamaran'
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
+                      </td>
+                    </tr>
+                  </React.Fragment>
                 ))
               )}
             </tbody>
@@ -934,36 +981,63 @@ const Tracker: React.FC<TrackerProps> = ({
                   style={{ color: 'var(--text-muted)' }}
                 >
                   <span className='flex items-center gap-1.5'>
-                    <Calendar size={11} />{' '}
-                  {safeFormatDate(app.dateApplied)}
+                    <Calendar size={11} /> {safeFormatDate(app.dateApplied)}
                   </span>
                   <span className='flex items-center gap-1.5 truncate ml-3'>
-                    <Users size={11} /> {app.hrEmail && app.hrEmail !== '-' ? app.hrEmail : '-'}
+                    <Users size={11} />{' '}
+                    {app.hrEmail && app.hrEmail !== '-' ? app.hrEmail : '-'}
                   </span>
                 </div>
-                <div className='flex items-center gap-2 text-[11px] px-1' style={{ color: 'var(--text-muted)' }}>
+                <div
+                  className='flex items-center gap-2 text-[11px] px-1'
+                  style={{ color: 'var(--text-muted)' }}
+                >
                   <span>Lewat: {app.method || '-'}</span>
                 </div>
 
                 <div className='flex flex-col gap-1.5 px-1'>
-                  <span className='text-[11px] font-semibold uppercase tracking-wider' style={{ color: 'var(--text-muted)' }}>
+                  <span
+                    className='text-[11px] font-semibold uppercase tracking-wider'
+                    style={{ color: 'var(--text-muted)' }}
+                  >
                     Catatan
                   </span>
-                  <div className='rounded-xl overflow-hidden' style={{ backgroundColor: 'var(--bg-elevated)', border: '1px solid var(--border)' }}>
+                  <div
+                    className='rounded-xl overflow-hidden'
+                    style={{
+                      backgroundColor: 'var(--bg-elevated)',
+                      border: '1px solid var(--border)',
+                    }}
+                  >
                     <button
                       type='button'
                       onClick={() => toggleNotesAccordion(app)}
                       className='w-full flex items-center justify-between gap-3 px-3 py-3 text-left'
                     >
                       <div className='min-w-0'>
-                        <p className='text-xs font-semibold' style={{ color: 'var(--text-primary)' }}>
+                        <p
+                          className='text-xs font-semibold'
+                          style={{ color: 'var(--text-primary)' }}
+                        >
                           {app.notes ? 'Catatan tersedia' : 'Tambah catatan'}
                         </p>
-                        <p className='text-[11px] mt-1' style={{ color: 'var(--text-muted)', maxHeight: '2.5rem', overflow: 'hidden' }}>
-                          {app.notes || 'Ketuk untuk menulis catatan panjang yang akan tersimpan ke Sheets.'}
+                        <p
+                          className='text-[11px] mt-1'
+                          style={{
+                            color: 'var(--text-muted)',
+                            maxHeight: '2.5rem',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          {app.notes ||
+                            'Ketuk untuk menulis catatan panjang yang akan tersimpan ke Sheets.'}
                         </p>
                       </div>
-                      <ChevronDown size={12} className={`shrink-0 transition-transform ${openNotesAccordionId === app.id ? 'rotate-180' : ''}`} style={{ color: 'var(--text-muted)' }} />
+                      <ChevronDown
+                        size={12}
+                        className={`shrink-0 transition-transform ${openNotesAccordionId === app.id ? 'rotate-180' : ''}`}
+                        style={{ color: 'var(--text-muted)' }}
+                      />
                     </button>
 
                     {openNotesAccordionId === app.id && (
@@ -1041,7 +1115,11 @@ const Tracker: React.FC<TrackerProps> = ({
                   </button>
                   <button
                     onClick={() =>
-                      setConfirmModal({ isOpen: true, targetId: app.id, isSynced: !!app.sheetRowIndex })
+                      setConfirmModal({
+                        isOpen: true,
+                        targetId: app.id,
+                        isSynced: !!app.sheetRowIndex,
+                      })
                     }
                     className='p-2 rounded-lg transition-colors text-rose-500/60 hover:text-rose-500'
                   >
@@ -1057,14 +1135,18 @@ const Tracker: React.FC<TrackerProps> = ({
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         title='Hapus Lamaran'
-        message={confirmModal.isSynced
-          ? 'Lamaran ini berasal dari Google Sheets. Data akan dihapus dari sheet juga. Lanjutkan?'
-          : 'Yakin ingin menghapus lamaran ini? Data tidak dapat dikembalikan.'}
+        message={
+          confirmModal.isSynced
+            ? 'Lamaran ini berasal dari Google Sheets. Data akan dihapus dari sheet juga. Lanjutkan?'
+            : 'Yakin ingin menghapus lamaran ini? Data tidak dapat dikembalikan.'
+        }
         onConfirm={() => {
           if (confirmModal.targetId) onDelete(confirmModal.targetId);
           setConfirmModal({ isOpen: false, targetId: null, isSynced: false });
         }}
-        onCancel={() => setConfirmModal({ isOpen: false, targetId: null, isSynced: false })}
+        onCancel={() =>
+          setConfirmModal({ isOpen: false, targetId: null, isSynced: false })
+        }
         confirmText='Hapus'
       />
 
@@ -1308,7 +1390,10 @@ const Tracker: React.FC<TrackerProps> = ({
         <div className='fixed inset-0 z-[100] flex items-center justify-center p-4'>
           <div
             className='absolute inset-0 bg-black/60 backdrop-blur-sm'
-            onClick={() => { setIsEditModalOpen(false); setEditingApp(null); }}
+            onClick={() => {
+              setIsEditModalOpen(false);
+              setEditingApp(null);
+            }}
           ></div>
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -1328,7 +1413,10 @@ const Tracker: React.FC<TrackerProps> = ({
                 Edit Lamaran
               </h3>
               <button
-                onClick={() => { setIsEditModalOpen(false); setEditingApp(null); }}
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingApp(null);
+                }}
                 className='p-1 rounded-md transition-colors hover:bg-white/10'
                 style={{ color: 'var(--text-secondary)' }}
               >
@@ -1352,7 +1440,10 @@ const Tracker: React.FC<TrackerProps> = ({
                   type='text'
                   value={editingApp.companyName || ''}
                   onChange={(e) =>
-                    setEditingApp({ ...editingApp, companyName: e.target.value })
+                    setEditingApp({
+                      ...editingApp,
+                      companyName: e.target.value,
+                    })
                   }
                   className='rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all'
                   style={{
@@ -1419,7 +1510,9 @@ const Tracker: React.FC<TrackerProps> = ({
                   <input
                     type='date'
                     value={
-                      editingApp.dateApplied ? editingApp.dateApplied.split('T')[0] : ''
+                      editingApp.dateApplied
+                        ? editingApp.dateApplied.split('T')[0]
+                        : ''
                     }
                     onChange={(e) =>
                       setEditingApp({
@@ -1446,7 +1539,10 @@ const Tracker: React.FC<TrackerProps> = ({
                   <select
                     value={editingApp.status || 'Applied'}
                     onChange={(e) =>
-                      setEditingApp({ ...editingApp, status: e.target.value as any })
+                      setEditingApp({
+                        ...editingApp,
+                        status: e.target.value as any,
+                      })
                     }
                     className='rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all'
                     style={{
