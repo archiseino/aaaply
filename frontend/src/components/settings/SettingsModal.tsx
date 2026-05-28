@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Save, File, Check, UploadCloud, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import axios from 'axios';
 import { set as setDb, del as delDb } from 'idb-keyval';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -27,7 +24,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
   const [saved, setSaved] = useState(false);
   const [cvHistory, setCvHistory] = useState<CVFile[]>([]);
   const [activeTab, setActiveTab] = useState<'api' | 'cv'>('cv');
-  const [isExtracting, setIsExtracting] = useState(false);
   const [gmailApiEnabled, setGmailApiEnabled] = useState(false);
   const [outlookApiEnabled, setOutlookApiEnabled] = useState(false);
   const [sheetId, setSheetId] = useState('');
@@ -66,54 +62,38 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
     }, 1000);
   };
 
-  const handleCVDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      if (file.type === 'application/pdf') {
-        setIsExtracting(true);
-        try {
-          const formData = new FormData();
-          formData.append('file', file);
-          const currentApiKey = apiKey || localStorage.getItem('GEMINI_API_KEY');
-          const headers = currentApiKey
-            ? {
-                'Content-Type': 'multipart/form-data',
-                'x-api-key': currentApiKey,
-              }
-            : {
-                'Content-Type': 'multipart/form-data',
-              };
-          const res = await axios.post(
-            `${API_BASE_URL}/api/extract-cv`,
-            formData,
-            {
-              headers,
-            },
-          );
-          const newCV: CVFile = {
-            id: Date.now().toString(),
-            name: file.name,
-            size: file.size,
-            text: res.data.text,
-            filename: file.name,
-          };
-          await setDb(`cv_blob_${newCV.id}`, file);
-          setCvHistory((prev) => [newCV, ...prev]);
-        } catch (error) {
-          console.error(error);
-          if (notify) notify('Gagal mengekstrak teks dari CV.', 'error');
-          else alert('Gagal mengekstrak teks dari CV.');
-        } finally {
-          setIsExtracting(false);
-        }
-      } else {
-        if (notify)
-          notify('Hanya format PDF yang didukung untuk CV.', 'warning');
-        else alert('Hanya format PDF yang didukung untuk CV.');
-      }
+  const handleCVFile = useCallback(async (file: File) => {
+    if (file.type !== 'application/pdf') {
+      if (notify) notify('Hanya format PDF yang didukung untuk CV.', 'warning');
+      else alert('Hanya format PDF yang didukung untuk CV.');
+      return;
     }
-  }, []);
+    const newCV: CVFile = {
+      id: Date.now().toString(),
+      name: file.name,
+      size: file.size,
+    };
+    await setDb(`cv_blob_${newCV.id}`, file);
+    setCvHistory((prev) => [newCV, ...prev]);
+  }, [notify]);
+
+  const handleCVFileSelect = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) handleCVFile(file);
+      e.target.value = '';
+    },
+    [handleCVFile],
+  );
+
+  const handleCVDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const file = e.dataTransfer.files?.[0];
+      if (file) handleCVFile(file);
+    },
+    [handleCVFile],
+  );
 
   const handleDeleteCV = async (id: string) => {
     await delDb(`cv_blob_${id}`);
@@ -292,7 +272,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
             </div>
           ) : (
             <div className='flex flex-col gap-4'>
-              <div
+              <label
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleCVDrop}
                 className='border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center text-center transition-colors cursor-pointer'
@@ -310,7 +290,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
                   className='text-sm font-semibold'
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  Drag & Drop file CV ke sini
+                  Klik untuk pilih file CV
                 </p>
                 <p
                   className='text-xs mt-1'
@@ -318,16 +298,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
                 >
                   Hanya format PDF
                 </p>
-              </div>
-
-              {isExtracting && (
-                <p
-                  className='text-sm text-center animate-pulse'
-                  style={{ color: 'var(--text-secondary)' }}
-                >
-                  Sedang mengekstrak teks CV...
-                </p>
-              )}
+                <input
+                  type='file'
+                  accept='.pdf,application/pdf'
+                  onChange={handleCVFileSelect}
+                  className='hidden'
+                />
+              </label>
 
               <div className='flex flex-col gap-2 mt-2'>
                 <h3

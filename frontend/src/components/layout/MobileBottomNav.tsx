@@ -1,12 +1,11 @@
 import { Settings, Send as SendIcon, LayoutDashboard, Briefcase } from 'lucide-react';
+import { useAppStore } from '../../store/useAppStore';
 
-interface MobileBottomNavProps {
-  activeTab: 'apply' | 'tracker' | 'jobfinder';
-  onTabChange: (tab: 'apply' | 'tracker' | 'jobfinder') => void;
-  onOpenSettings: () => void;
-}
+export function MobileBottomNav() {
+  const activeTab = useAppStore((s) => s.activeTab);
+  const setActiveTab = useAppStore((s) => s.setActiveTab);
+  const setIsSettingsOpen = useAppStore((s) => s.setIsSettingsOpen);
 
-export function MobileBottomNav({ activeTab, onTabChange, onOpenSettings }: MobileBottomNavProps) {
   return (
     <div
       className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around px-6 pt-2 backdrop-blur-xl border-t"
@@ -18,7 +17,7 @@ export function MobileBottomNav({ activeTab, onTabChange, onOpenSettings }: Mobi
       }}
     >
       <button
-        onClick={() => onTabChange('apply')}
+        onClick={() => setActiveTab('apply')}
         className="flex flex-col items-center gap-1 transition-all"
         style={{ color: activeTab === 'apply' ? 'var(--accent)' : 'var(--text-muted)' }}
       >
@@ -27,30 +26,30 @@ export function MobileBottomNav({ activeTab, onTabChange, onOpenSettings }: Mobi
       </button>
 
       <button
-        onClick={() => onTabChange('jobfinder')}
+        onClick={() => setActiveTab('jobfinder')}
         className="flex flex-col items-center gap-1 transition-all"
         style={{ color: activeTab === 'jobfinder' ? 'var(--accent)' : 'var(--text-muted)' }}
       >
         <Briefcase size={20} className={activeTab === 'jobfinder' ? 'scale-110' : ''} />
-        <span className="text-[10px] font-bold">Lowongan</span>
+        <span className="text-[10px] font-bold">Cari</span>
       </button>
 
       <button
-        onClick={() => onTabChange('tracker')}
+        onClick={() => setActiveTab('tracker')}
         className="flex flex-col items-center gap-1 transition-all"
         style={{ color: activeTab === 'tracker' ? 'var(--accent)' : 'var(--text-muted)' }}
       >
         <LayoutDashboard size={20} className={activeTab === 'tracker' ? 'scale-110' : ''} />
-        <span className="text-[10px] font-bold">Riwayat</span>
+        <span className="text-[10px] font-bold">Tracker</span>
       </button>
 
       <button
-        onClick={onOpenSettings}
+        onClick={() => setIsSettingsOpen(true)}
         className="flex flex-col items-center gap-1 transition-all"
         style={{ color: 'var(--text-muted)' }}
       >
         <Settings size={20} />
-        <span className="text-[10px] font-bold">Pengaturan</span>
+        <span className="text-[10px] font-bold">Setting</span>
       </button>
     </div>
   );

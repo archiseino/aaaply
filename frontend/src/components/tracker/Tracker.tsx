@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -150,6 +150,219 @@ function safeFormatDate(dateStr: string): string {
   return dateStr;
 }
 
+const NotesRow: React.FC<{
+  app: JobApplication;
+  onSave: (app: JobApplication, notes: string) => void;
+  variant?: 'desktop' | 'mobile';
+}> = ({ app, onSave, variant = 'desktop' }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const toggle = () => {
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
+    setIsOpen(true);
+    setDraft(app.notes || '');
+  };
+
+  const save = () => {
+    onSave(app, draft);
+    setIsOpen(false);
+  };
+
+  if (variant === 'mobile') {
+    return (
+      <div className='flex flex-col gap-1.5 px-1'>
+        <span
+          className='text-[11px] font-semibold uppercase tracking-wider'
+          style={{ color: 'var(--text-muted)' }}
+        >
+          Catatan
+        </span>
+        <div
+          className='rounded-xl overflow-hidden'
+          style={{
+            backgroundColor: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          <button
+            type='button'
+            onClick={toggle}
+            className='w-full flex items-center justify-between gap-3 px-3 py-3 text-left'
+          >
+            <div className='min-w-0'>
+              <p
+                className='text-xs font-semibold'
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {app.notes ? 'Catatan tersedia' : 'Tambah catatan'}
+              </p>
+              {!isOpen && app.notes ? (
+                <p
+                  className='text-[11px] mt-1'
+                  style={{
+                    color: 'var(--text-muted)',
+                    maxHeight: '2.5rem',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {app.notes}
+                </p>
+              ) : !isOpen && !app.notes ? (
+                <p
+                  className='text-[11px] mt-1'
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  Ketuk untuk menulis catatan panjang yang akan tersimpan ke
+                  Sheets.
+                </p>
+              ) : null}
+            </div>
+            <ChevronDown
+              size={12}
+              className={`shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+              style={{ color: 'var(--text-muted)' }}
+            />
+          </button>
+
+          {isOpen && (
+            <div className='px-3 pb-3 pt-0 flex flex-col gap-3'>
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={5}
+                className='w-full rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 transition-all resize-y'
+                style={{
+                  backgroundColor: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-primary)',
+                }}
+                placeholder='Tulis catatan di sini...'
+              />
+              <div className='flex items-center justify-end gap-2'>
+                <button
+                  type='button'
+                  onClick={() => setIsOpen(false)}
+                  className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
+                  style={{
+                    backgroundColor: 'var(--bg-card)',
+                    color: 'var(--text-secondary)',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  Batal
+                </button>
+                <button
+                  type='button'
+                  onClick={save}
+                  className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
+                  style={{
+                    backgroundColor: 'var(--text-primary)',
+                    color: 'var(--text-inverse)',
+                  }}
+                >
+                  Simpan Catatan
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className='flex flex-col gap-2 w-full max-w-[560px]'>
+      <button
+        type='button'
+        onClick={toggle}
+        className='w-full inline-flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left'
+        style={{
+          backgroundColor: 'var(--bg-elevated)',
+          color: app.notes ? 'var(--text-primary)' : 'var(--text-muted)',
+          border: '1px solid var(--border)',
+        }}
+        title='Edit catatan'
+      >
+        <span className='truncate text-left flex items-center gap-2'>
+          <span>
+            {app.notes ? 'Catatan tersedia' : 'Tambah catatan'}
+          </span>
+          {app.notes && (
+            <span
+              className='text-[10px] opacity-60 font-normal'
+              style={{ color: 'var(--text-muted)' }}
+            >
+              {app.notes.length} karakter
+            </span>
+          )}
+        </span>
+        <ChevronDown
+          size={12}
+          className={`shrink-0 opacity-70 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {isOpen ? (
+        <div
+          className='rounded-lg p-3 flex flex-col gap-3'
+          style={{
+            backgroundColor: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+          }}
+        >
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={4}
+            className='w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all resize-y'
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-primary)',
+            }}
+            placeholder='Tulis catatan di sini...'
+          />
+          <div className='flex items-center justify-end gap-2'>
+            <button
+              type='button'
+              onClick={() => setIsOpen(false)}
+              className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
+              style={{
+                backgroundColor: 'var(--bg-card)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+              }}
+            >
+              Batal
+            </button>
+            <button
+              type='button'
+              onClick={save}
+              className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
+              style={{
+                backgroundColor: 'var(--text-primary)',
+                color: 'var(--text-inverse)',
+              }}
+            >
+              Simpan Catatan
+            </button>
+          </div>
+        </div>
+      ) : app.notes ? (
+        <p
+          className='text-xs leading-5 rounded-md px-0 whitespace-pre-wrap'
+          style={{ color: 'var(--text-muted)' }}
+        >
+          {app.notes}
+        </p>
+      ) : null}
+    </div>
+  );
+};
+
 const Tracker: React.FC<TrackerProps> = ({
   applications,
   onUpdateStatus,
@@ -177,10 +390,6 @@ const Tracker: React.FC<TrackerProps> = ({
     dateApplied: new Date().toISOString(),
   });
   const [isSyncing, setIsSyncing] = useState(false);
-  const [openNotesAccordionId, setOpenNotesAccordionId] = useState<
-    string | null
-  >(null);
-  const [notesDraft, setNotesDraft] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -259,25 +468,13 @@ const Tracker: React.FC<TrackerProps> = ({
     ].filter((item) => item.value > 0);
   }, [applications]);
 
-  const handleNotesUpdate = (app: JobApplication, nextNotes: string) => {
-    if (!onEditSave) return;
-    onEditSave({ ...app, notes: nextNotes });
-  };
-
-  const toggleNotesAccordion = (app: JobApplication) => {
-    if (openNotesAccordionId === app.id) {
-      setOpenNotesAccordionId(null);
-      return;
-    }
-
-    setOpenNotesAccordionId(app.id);
-    setNotesDraft(app.notes || '');
-  };
-
-  const saveNotesDraft = (app: JobApplication) => {
-    handleNotesUpdate(app, notesDraft);
-    setOpenNotesAccordionId(null);
-  };
+  const handleEditSaveWrapper = useCallback(
+    (app: JobApplication, notes: string) => {
+      if (!onEditSave) return;
+      onEditSave({ ...app, notes });
+    },
+    [onEditSave],
+  );
 
   const barData = useMemo(() => {
     const months: Record<string, number> = {};
@@ -753,99 +950,11 @@ const Tracker: React.FC<TrackerProps> = ({
                     >
                       <td colSpan={6} className='p-0'>
                         <div className='pl-8 pr-4 pb-3 pt-0'>
-                          <div className='flex flex-col gap-2 w-full max-w-[560px]'>
-                            <button
-                              type='button'
-                              onClick={() => toggleNotesAccordion(app)}
-                              className='w-full inline-flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all text-left'
-                              style={{
-                                backgroundColor: 'var(--bg-elevated)',
-                                color: app.notes
-                                  ? 'var(--text-primary)'
-                                  : 'var(--text-muted)',
-                                border: '1px solid var(--border)',
-                              }}
-                              title='Edit catatan'
-                            >
-                              <span className='truncate text-left flex items-center gap-2'>
-                                <span>
-                                  {app.notes
-                                    ? 'Catatan tersedia'
-                                    : 'Tambah catatan'}
-                                </span>
-                                {app.notes && (
-                                  <span
-                                    className='text-[10px] opacity-60 font-normal'
-                                    style={{ color: 'var(--text-muted)' }}
-                                  >
-                                    {app.notes.length} karakter
-                                  </span>
-                                )}
-                              </span>
-                              <ChevronDown
-                                size={12}
-                                className={`shrink-0 opacity-70 transition-transform ${openNotesAccordionId === app.id ? 'rotate-180' : ''}`}
-                              />
-                            </button>
-                            {openNotesAccordionId === app.id ? (
-                              <div
-                                className='rounded-lg p-3 flex flex-col gap-3'
-                                style={{
-                                  backgroundColor: 'var(--bg-elevated)',
-                                  border: '1px solid var(--border)',
-                                }}
-                              >
-                                <textarea
-                                  value={notesDraft}
-                                  onChange={(e) =>
-                                    setNotesDraft(e.target.value)
-                                  }
-                                  rows={4}
-                                  className='w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 transition-all resize-y'
-                                  style={{
-                                    backgroundColor: 'var(--bg-card)',
-                                    border: '1px solid var(--border)',
-                                    color: 'var(--text-primary)',
-                                  }}
-                                  placeholder='Tulis catatan di sini...'
-                                />
-                                <div className='flex items-center justify-end gap-2'>
-                                  <button
-                                    type='button'
-                                    onClick={() =>
-                                      setOpenNotesAccordionId(null)
-                                    }
-                                    className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
-                                    style={{
-                                      backgroundColor: 'var(--bg-card)',
-                                      color: 'var(--text-secondary)',
-                                      border: '1px solid var(--border)',
-                                    }}
-                                  >
-                                    Batal
-                                  </button>
-                                  <button
-                                    type='button'
-                                    onClick={() => saveNotesDraft(app)}
-                                    className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
-                                    style={{
-                                      backgroundColor: 'var(--text-primary)',
-                                      color: 'var(--text-inverse)',
-                                    }}
-                                  >
-                                    Simpan Catatan
-                                  </button>
-                                </div>
-                              </div>
-                            ) : app.notes ? (
-                              <p
-                                className='text-xs leading-5 rounded-md px-0 whitespace-pre-wrap'
-                                style={{ color: 'var(--text-muted)' }}
-                              >
-                                {app.notes}
-                              </p>
-                            ) : null}
-                          </div>
+                          <NotesRow
+                            app={app}
+                            onSave={handleEditSaveWrapper}
+                            variant='desktop'
+                          />
                         </div>
                       </td>
                     </tr>
@@ -995,94 +1104,7 @@ const Tracker: React.FC<TrackerProps> = ({
                   <span>Lewat: {app.method || '-'}</span>
                 </div>
 
-                <div className='flex flex-col gap-1.5 px-1'>
-                  <span
-                    className='text-[11px] font-semibold uppercase tracking-wider'
-                    style={{ color: 'var(--text-muted)' }}
-                  >
-                    Catatan
-                  </span>
-                  <div
-                    className='rounded-xl overflow-hidden'
-                    style={{
-                      backgroundColor: 'var(--bg-elevated)',
-                      border: '1px solid var(--border)',
-                    }}
-                  >
-                    <button
-                      type='button'
-                      onClick={() => toggleNotesAccordion(app)}
-                      className='w-full flex items-center justify-between gap-3 px-3 py-3 text-left'
-                    >
-                      <div className='min-w-0'>
-                        <p
-                          className='text-xs font-semibold'
-                          style={{ color: 'var(--text-primary)' }}
-                        >
-                          {app.notes ? 'Catatan tersedia' : 'Tambah catatan'}
-                        </p>
-                        <p
-                          className='text-[11px] mt-1'
-                          style={{
-                            color: 'var(--text-muted)',
-                            maxHeight: '2.5rem',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          {app.notes ||
-                            'Ketuk untuk menulis catatan panjang yang akan tersimpan ke Sheets.'}
-                        </p>
-                      </div>
-                      <ChevronDown
-                        size={12}
-                        className={`shrink-0 transition-transform ${openNotesAccordionId === app.id ? 'rotate-180' : ''}`}
-                        style={{ color: 'var(--text-muted)' }}
-                      />
-                    </button>
-
-                    {openNotesAccordionId === app.id && (
-                      <div className='px-3 pb-3 pt-0 flex flex-col gap-3'>
-                        <textarea
-                          value={notesDraft}
-                          onChange={(e) => setNotesDraft(e.target.value)}
-                          rows={5}
-                          className='w-full rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 transition-all resize-y'
-                          style={{
-                            backgroundColor: 'var(--bg-card)',
-                            border: '1px solid var(--border)',
-                            color: 'var(--text-primary)',
-                          }}
-                          placeholder='Tulis catatan di sini...'
-                        />
-                        <div className='flex items-center justify-end gap-2'>
-                          <button
-                            type='button'
-                            onClick={() => setOpenNotesAccordionId(null)}
-                            className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
-                            style={{
-                              backgroundColor: 'var(--bg-card)',
-                              color: 'var(--text-secondary)',
-                              border: '1px solid var(--border)',
-                            }}
-                          >
-                            Batal
-                          </button>
-                          <button
-                            type='button'
-                            onClick={() => saveNotesDraft(app)}
-                            className='px-3 py-2 rounded-lg text-xs font-semibold transition-colors'
-                            style={{
-                              backgroundColor: 'var(--text-primary)',
-                              color: 'var(--text-inverse)',
-                            }}
-                          >
-                            Simpan
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <NotesRow app={app} onSave={handleEditSaveWrapper} variant='mobile' />
 
                 <div className='flex justify-between items-center gap-3'>
                   <button

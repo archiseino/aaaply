@@ -1,26 +1,21 @@
 import { Settings, Sun, Moon, Send as SendIcon, LayoutDashboard, Briefcase } from 'lucide-react';
 import { useTheme } from '../ui/ThemeProvider';
+import { useAppStore } from '../../store/useAppStore';
+import { useTrackerStore } from '../../store/useTrackerStore';
 
-interface SidebarProps {
-  activeTab: 'apply' | 'tracker' | 'jobfinder';
-  onTabChange: (tab: 'apply' | 'tracker' | 'jobfinder') => void;
-  isMobileMenuOpen: boolean;
-  onClose: () => void;
-  applicationsCount: number;
-  onOpenSettings: () => void;
-  onOpenInfoModal: (type: 'about' | 'privacy') => void;
-}
-
-export function Sidebar({
-  activeTab,
-  onTabChange,
-  isMobileMenuOpen,
-  onClose,
-  applicationsCount,
-  onOpenSettings,
-  onOpenInfoModal,
-}: SidebarProps) {
+export function Sidebar() {
   const { theme, toggleTheme } = useTheme();
+
+  const activeTab = useAppStore((s) => s.activeTab);
+  const setActiveTab = useAppStore((s) => s.setActiveTab);
+  const isMobileMenuOpen = useAppStore((s) => s.isMobileMenuOpen);
+  const setIsMobileMenuOpen = useAppStore((s) => s.setIsMobileMenuOpen);
+  const setIsSettingsOpen = useAppStore((s) => s.setIsSettingsOpen);
+  const setInfoModal = useAppStore((s) => s.setInfoModal);
+
+  const applicationsCount = useTrackerStore((s) => s.applications.length);
+
+  const handleClose = () => setIsMobileMenuOpen(false);
 
   return (
     <aside
@@ -37,14 +32,14 @@ export function Sidebar({
 
       <nav className="flex-1 p-4 flex flex-col gap-1 overflow-y-auto">
         <button
-          onClick={() => { onTabChange('apply'); onClose(); }}
+          onClick={() => { setActiveTab('apply'); handleClose(); }}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors"
           style={activeTab === 'apply' ? { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' } : { color: 'var(--text-secondary)' }}
         >
           <SendIcon size={18} /> Lamaran Baru
         </button>
         <button
-          onClick={() => { onTabChange('tracker'); onClose(); }}
+          onClick={() => { setActiveTab('tracker'); handleClose(); }}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors"
           style={activeTab === 'tracker' ? { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' } : { color: 'var(--text-secondary)' }}
         >
@@ -56,7 +51,7 @@ export function Sidebar({
           )}
         </button>
         <button
-          onClick={() => { onTabChange('jobfinder'); onClose(); }}
+          onClick={() => { setActiveTab('jobfinder'); handleClose(); }}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-colors"
           style={activeTab === 'jobfinder' ? { backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)' } : { color: 'var(--text-secondary)' }}
         >
@@ -73,7 +68,7 @@ export function Sidebar({
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />} {theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
         </button>
         <button
-          onClick={() => { onOpenSettings(); onClose(); }}
+          onClick={() => { setIsSettingsOpen(true); handleClose(); }}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors"
           style={{ color: 'var(--text-secondary)' }}
         >
@@ -82,14 +77,14 @@ export function Sidebar({
 
         <div className="mt-2 pt-2 flex flex-col gap-1" style={{ borderTop: '1px solid var(--border)' }}>
           <button
-            onClick={() => onOpenInfoModal('about')}
+            onClick={() => setInfoModal({ isOpen: true, type: 'about' })}
             className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-medium transition-colors opacity-60 hover:opacity-100"
             style={{ color: 'var(--text-secondary)' }}
           >
             Tentang Kami
           </button>
           <button
-            onClick={() => onOpenInfoModal('privacy')}
+            onClick={() => setInfoModal({ isOpen: true, type: 'privacy' })}
             className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-medium transition-colors opacity-60 hover:opacity-100"
             style={{ color: 'var(--text-secondary)' }}
           >

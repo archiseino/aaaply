@@ -16,20 +16,10 @@ import {
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import { ConfirmModal } from '../ui/ConfirmModal';
-import type { ResultData } from '../../hooks/useAIProcess';
-import type { ToastType } from '../ui/Toast';
 import { API_BASE_URL } from '../../lib/constants';
-
-interface ResultFormProps {
-  data: ResultData | null;
-  cvHistory: { id: string; name: string }[];
-  selectedCV: string;
-  onCVChange: (id: string) => void;
-  onChange: (data: ResultData) => void;
-  onSend: (method: 'outlook' | 'gmail' | 'native') => void | Promise<void>;
-  onCopyFileCV?: () => Promise<boolean>;
-  notify?: (message: string, type?: ToastType) => void;
-}
+import { useApplyStore } from '../../store/useApplyStore';
+import { useNotificationStore } from '../../store/useNotificationStore';
+import { handleSend, handleCopyFileCV } from '../../lib/actions';
 
 interface MasterTemplate {
   id: string;
@@ -39,7 +29,14 @@ interface MasterTemplate {
 
 const TEMPLATES_KEY = 'APPLYBOT_TEMPLATES';
 
-const ResultForm = ({ data, cvHistory, selectedCV, onCVChange, onChange, onSend, onCopyFileCV, notify }: ResultFormProps) => {
+const ResultForm = () => {
+  const data = useApplyStore((s) => s.result);
+  const onChange = useApplyStore((s) => s.setResult);
+  const cvHistory = useApplyStore((s) => s.cvHistory);
+  const selectedCV = useApplyStore((s) => s.selectedCV);
+  const onCVChange = useApplyStore((s) => s.setSelectedCV);
+  const notify = useNotificationStore((s) => s.notify);
+
   const [revisionPrompt, setRevisionPrompt] = useState('');
   const [isRevising, setIsRevising] = useState(false);
   const [templates, setTemplates] = useState<MasterTemplate[]>([]);
@@ -52,11 +49,15 @@ const ResultForm = ({ data, cvHistory, selectedCV, onCVChange, onChange, onSend,
   const [bodyCopied, setBodyCopied] = useState(false);
   const [cvExists, setCvExists] = useState<boolean | null>(null);
 
-  const draft = useMemo<ResultData>(() => data ?? {}, [data]);
+  const draft = useMemo<Record<string, any>>(() => data ?? {}, [data]);
   const canSubmit = Boolean((draft.subject || '').trim() && (draft.body || '').trim());
 
-  const updateDraft = (patch: Partial<ResultData>) => {
-    onChange({ ...draft, ...patch });
+  const updateDraft = (patch: Record<string, any>) => {
+    if (data) {
+      onChange({ ...data, ...patch });
+    } else {
+      onChange(patch as any);
+    }
   };
 
   useEffect(() => {
@@ -137,7 +138,6 @@ const ResultForm = ({ data, cvHistory, selectedCV, onCVChange, onChange, onSend,
             const match = cvs.find(cv => cv.id === selectedCV);
             if (match?.text) cvTextForRevision = match.text;
           } catch {
-            // Ignore malformed local cache.
           }
         }
       }
@@ -188,45 +188,6 @@ const ResultForm = ({ data, cvHistory, selectedCV, onCVChange, onChange, onSend,
     border: '1px solid var(--border)',
     color: 'var(--text-primary)',
   } as const;
-
-  const handleCopyCV = async () => {
-    if (onCopyFileCV) {
-      try {
-        const success = await onCopyFileCV();
-        if (success) {
-          setCvCopied(true);
-          window.setTimeout(() => setCvCopied(false), 2200);
-          notify?.('CV berhasil disalin.', 'success');
-        } else {
-          if (cvExists === false) {
-            notify?.('File CV tidak ditemukan di memori browser. Silakan upload ulang CV di Pengaturan.', 'error');
-          } else {
-            notify?.('Gagal menyalin CV. Browser mungkin membatasi akses clipboard.', 'warning');
-          }
-        }
-      } catch {
-        notify?.('Terjadi kesalahan saat menyalin CV.', 'error');
-      }
-    } else {
-      notify?.('Fitur salin CV tidak tersedia.', 'error');
-    }
-  };
-
-  const handleCopyBody = async () => {
-    const body = draft.body || '';
-    if (!body.trim()) {
-      notify?.('Body email masih kosong.', 'warning');
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(body);
-      setBodyCopied(true);
-      window.setTimeout(() => setBodyCopied(false), 2200);
-      notify?.('Isi email berhasil disalin.', 'success');
-    } catch {
-      notify?.('Gagal menyalin isi email.', 'error');
-    }
-  };
 
   return (
     <motion.div
@@ -390,7 +351,20 @@ const ResultForm = ({ data, cvHistory, selectedCV, onCVChange, onChange, onSend,
           {selectedCV && (
             <button
               type='button'
-              onClick={handleCopyCV}
+              onClick={async () => {
+                const success = await handleCopyFileCV();
+                if (success) {
+                  setCvCopied(true);
+                  window.setTimeout(() => setCvCopied(false), 2200);
+                  notify?.('CV berhasil disalin.', 'success');
+                } else {
+                  if (cvExists === false) {
+                    notify?.('File CV tidak ditemukan di memori browser. Silakan upload ulang CV di Pengaturan.', 'error');
+                  } else {
+                    notify?.('Gagal menyalin CV. Browser mungkin membatasi akses clipboard.', 'warning');
+                  }
+                }
+              }}
               className={`p-2 rounded-lg transition-all flex items-center gap-1.5 text-xs font-bold border ${
                 cvCopied
                   ? 'bg-green-500/20 text-green-500 border-green-500/50'
@@ -417,7 +391,21 @@ const ResultForm = ({ data, cvHistory, selectedCV, onCVChange, onChange, onSend,
       <div className='mt-4 pt-4 grid grid-cols-1 sm:grid-cols-4 gap-2' style={{ borderTop: '1px solid var(--border)' }}>
         <button
           type='button'
-          onClick={handleCopyBody}
+          onClick={async () => {
+            const body = draft.body || '';
+            if (!body.trim()) {
+              notify?.('Body email masih kosong.', 'warning');
+              return;
+            }
+            try {
+              await navigator.clipboard.writeText(body);
+              setBodyCopied(true);
+              window.setTimeout(() => setBodyCopied(false), 2200);
+              notify?.('Isi email berhasil disalin.', 'success');
+            } catch {
+              notify?.('Gagal menyalin isi email.', 'error');
+            }
+          }}
           disabled={!canSubmit}
           className='font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all text-sm disabled:opacity-50'
           style={{ backgroundColor: bodyCopied ? 'var(--status-green)' : 'var(--bg-elevated)', color: bodyCopied ? '#fff' : 'var(--text-primary)', border: '1px solid var(--border)' }}
@@ -427,7 +415,7 @@ const ResultForm = ({ data, cvHistory, selectedCV, onCVChange, onChange, onSend,
 
         <button
           type='button'
-          onClick={() => onSend('gmail')}
+          onClick={() => handleSend('gmail')}
           disabled={!canSubmit}
           className='font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all text-sm disabled:opacity-50'
           style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
@@ -437,7 +425,7 @@ const ResultForm = ({ data, cvHistory, selectedCV, onCVChange, onChange, onSend,
 
         <button
           type='button'
-          onClick={() => onSend('outlook')}
+          onClick={() => handleSend('outlook')}
           disabled={!canSubmit}
           className='font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all text-sm disabled:opacity-50'
           style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
@@ -447,7 +435,7 @@ const ResultForm = ({ data, cvHistory, selectedCV, onCVChange, onChange, onSend,
 
         <button
           type='button'
-          onClick={() => onSend('native')}
+          onClick={() => handleSend('native')}
           disabled={!canSubmit}
           className='font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all text-sm disabled:opacity-50'
           style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}

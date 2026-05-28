@@ -1,43 +1,43 @@
+import { useEffect, useState } from 'react';
 import { X, FileText, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Dropzone from '../ui/Dropzone';
+import { useApplyStore } from '../../store/useApplyStore';
 
-interface InputPanelProps {
-  inputType: 'image' | 'text';
-  onInputTypeChange: (type: 'image' | 'text') => void;
-  file: File | null;
-  onFileUpload: (file: File) => void;
-  textInput: string;
-  onTextInputChange: (text: string) => void;
-  onClear: () => void;
-  fileUrl: string | null;
-  isImage: boolean;
-}
+export function InputPanel() {
+  const inputType = useApplyStore((s) => s.inputType);
+  const setInputType = useApplyStore((s) => s.setInputType);
+  const file = useApplyStore((s) => s.file);
+  const onFileUpload = useApplyStore((s) => s.handleFileUpload);
+  const textInput = useApplyStore((s) => s.textInput);
+  const setTextInput = useApplyStore((s) => s.setTextInput);
+  const onClear = useApplyStore((s) => s.clearInput);
 
-export function InputPanel({
-  inputType,
-  onInputTypeChange,
-  file,
-  onFileUpload,
-  textInput,
-  onTextInputChange,
-  onClear,
-  fileUrl,
-  isImage,
-}: InputPanelProps) {
+  const isImage = file?.type.startsWith('image/') ?? false;
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setFileUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setFileUrl(null);
+    }
+  }, [file]);
 
   return (
     <div className="w-full md:w-1/2 p-6 flex flex-col overflow-y-visible md:overflow-y-auto relative shrink-0 md:shrink pb-24 md:pb-6 border-b md:border-b-0 md:border-r" style={{ borderColor: 'var(--border)' }}>
       <div className="flex p-1 rounded-lg shrink-0 mb-6" style={{ backgroundColor: 'var(--bg-elevated)' }}>
         <button
-          onClick={() => onInputTypeChange('image')}
+          onClick={() => setInputType('image')}
           className="flex-1 py-2 text-sm font-semibold rounded-md transition-colors"
           style={inputType === 'image' ? { backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' } : { color: 'var(--text-muted)' }}
         >
           Upload Gambar
         </button>
         <button
-          onClick={() => onInputTypeChange('text')}
+          onClick={() => setInputType('text')}
           className="flex-1 py-2 text-sm font-semibold rounded-md transition-colors"
           style={inputType === 'text' ? { backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' } : { color: 'var(--text-muted)' }}
         >
@@ -97,7 +97,7 @@ export function InputPanel({
             <p className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>Copy-paste detail lowongan dari platform manapun.</p>
             <textarea
               value={textInput}
-              onChange={(e) => onTextInputChange(e.target.value)}
+              onChange={(e) => setTextInput(e.target.value)}
               placeholder="Paste deskripsi pekerjaan di sini..."
               className="flex-1 w-full rounded-xl p-4 text-sm transition-all resize-none focus:outline-none focus:ring-1"
               style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}

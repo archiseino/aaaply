@@ -1,27 +1,27 @@
 import { motion } from 'framer-motion';
 import JobFinder from '../components/jobfinder/JobFinder';
-import type { JobApplication } from '../components/tracker/Tracker';
-import type { ToastType } from '../components/ui/Toast';
+import { useNotificationStore } from '../store/useNotificationStore';
+import { useTrackerStore } from '../store/useTrackerStore';
+import { handleJobFinderApply } from '../lib/actions';
 
-interface JobFinderPageProps {
-  onApply: (job: any) => void;
-  onAddExternalApplication: (app: JobApplication) => void;
-  notify: (msg: string, type?: ToastType) => void;
-}
+export function JobFinderPage() {
+  const notify = useNotificationStore((s) => s.notify);
+  const handleAddExternal = useTrackerStore(
+    (s) => s.handleAddManualApplication,
+  );
 
-export function JobFinderPage({ onApply, onAddExternalApplication, notify }: JobFinderPageProps) {
   return (
     <motion.div
-      key="jobfinder"
+      key='jobfinder'
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.2 }}
-      className="w-full h-full overflow-hidden flex flex-col"
+      className='w-full h-full overflow-hidden flex flex-col'
     >
       <JobFinder
-        onApply={onApply}
-        onAddExternalApplication={onAddExternalApplication}
+        onApply={handleJobFinderApply}
+        onAddExternalApplication={handleAddExternal}
         notify={notify}
       />
     </motion.div>

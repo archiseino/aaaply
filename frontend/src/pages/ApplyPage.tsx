@@ -1,52 +1,40 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { InputPanel } from '../components/apply/InputPanel';
-import { ProcessingOverlay } from '../components/apply/ProcessingOverlay';
-import type { ResultData } from '../hooks/useAIProcess';
-import type { CVItem } from '../hooks/useCVManager';
-import type { ToastType } from '../components/ui/Toast';
 import ResultForm from '../components/apply/ResultForm';
+import { useApplyStore, performAnalysis } from '../store/useApplyStore';
 
-interface ApplyPageProps {
-  isProcessing: boolean;
-  inputType: 'image' | 'text';
-  onInputTypeChange: (type: 'image' | 'text') => void;
-  file: File | null;
-  onFileUpload: (file: File) => void;
-  textInput: string;
-  onTextInputChange: (text: string) => void;
-  onClear: () => void;
-  fileUrl: string | null;
-  isImage: boolean;
-  result: ResultData | null;
-  cvHistory: CVItem[];
-  selectedCV: string;
-  onCVChange: (id: string) => void;
-  onSend: (method: 'outlook' | 'gmail' | 'native') => void;
-  onCopyFileCV: () => Promise<boolean>;
-  onChange: (data: ResultData) => void;
-  notify: (msg: string, type?: ToastType) => void;
-}
+export function ApplyPage() {
+  const file = useApplyStore((s) => s.file);
+  const textInput = useApplyStore((s) => s.textInput);
+  const selectedCV = useApplyStore((s) => s.selectedCV);
+  const result = useApplyStore((s) => s.result);
+  const isProcessing = useApplyStore((s) => s.isProcessing);
+  const handleFileUpload = useApplyStore((s) => s.handleFileUpload);
 
-export function ApplyPage({
-  isProcessing,
-  inputType,
-  onInputTypeChange,
-  file,
-  onFileUpload,
-  textInput,
-  onTextInputChange,
-  onClear,
-  fileUrl,
-  isImage,
-  result,
-  cvHistory,
-  selectedCV,
-  onCVChange,
-  onSend,
-  onCopyFileCV,
-  onChange,
-  notify,
-}: ApplyPageProps) {
+  useEffect(() => {
+    if (!(file || textInput.trim()) || !selectedCV || result || isProcessing) {
+      return;
+    }
+    performAnalysis();
+  }, [file, textInput, selectedCV, result, isProcessing]);
+
+  useEffect(() => {
+    if (result) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      if (e.clipboardData && e.clipboardData.files.length > 0) {
+        const pastedFile = e.clipboardData.files[0];
+        if (pastedFile.type.startsWith('image/')) {
+          handleFileUpload(pastedFile);
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste as any);
+    return () => {
+      window.removeEventListener('paste', handlePaste as any);
+    };
+  }, [result, handleFileUpload]);
+
   return (
     <motion.div
       key='apply'
@@ -56,32 +44,8 @@ export function ApplyPage({
       transition={{ duration: 0.2 }}
       className='flex-1 flex flex-col md:flex-row w-full h-full overflow-y-auto md:overflow-hidden relative'
     >
-      {isProcessing && <ProcessingOverlay />}
-
-      <InputPanel
-        inputType={inputType}
-        onInputTypeChange={onInputTypeChange}
-        file={file}
-        onFileUpload={onFileUpload}
-        textInput={textInput}
-        onTextInputChange={onTextInputChange}
-        onClear={onClear}
-        fileUrl={fileUrl}
-        isImage={isImage}
-      />
-
-        <ResultForm
-          key='result-form'
-          data={result}
-          cvHistory={cvHistory}
-          selectedCV={selectedCV}
-          onCVChange={onCVChange}
-          onChange={onChange}
-          onSend={onSend}
-          onCopyFileCV={onCopyFileCV}
-          notify={notify}
-        />
-
+      <InputPanel />
+      <ResultForm />
     </motion.div>
   );
 }
