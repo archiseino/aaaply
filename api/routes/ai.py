@@ -85,9 +85,10 @@ async def process_all(request: Request, x_api_key: str = Header(None)):
     file = form.get("file")
     text_content = form.get("text")
     cv_text = form.get("cv_text", "").strip()
+    cv_file = form.get("cv_file")
 
-    if not cv_text:
-        raise HTTPException(status_code=400, detail="CV text is required")
+    if not cv_text and not cv_file:
+        raise HTTPException(status_code=400, detail="CV text or CV file is required")
 
     cv_text = trim_input(cv_text, MAX_CV_RAW_CHARS, "cv_text_process_all")
     if text_content:
@@ -101,11 +102,20 @@ async def process_all(request: Request, x_api_key: str = Header(None)):
         with open(temp_path, "wb") as buffer:
             buffer.write(contents)
 
+    temp_cv_path = None
+    if cv_file and isinstance(cv_file, UploadFile):
+        temp_cv_filename = f"cv_{uuid.uuid4()}_{cv_file.filename}"
+        temp_cv_path = os.path.join(tempfile.gettempdir(), temp_cv_filename)
+        contents = await cv_file.read()
+        with open(temp_cv_path, "wb") as buffer:
+            buffer.write(contents)
+
     try:
         result = await ai_service.process_all_in_one(
             image_path=temp_path,
             text_content=text_content,
             cv_text=cv_text,
+            cv_file_path=temp_cv_path,
             api_key=x_api_key
         )
         return result
@@ -115,6 +125,8 @@ async def process_all(request: Request, x_api_key: str = Header(None)):
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
+        if temp_cv_path and os.path.exists(temp_cv_path):
+            os.remove(temp_cv_path)
 
 
 @router.post("/api/revise")

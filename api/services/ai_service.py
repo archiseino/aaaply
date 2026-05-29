@@ -44,7 +44,7 @@ async def execute_with_retry(api_key: str | None, execute_func):
             
     raise HTTPException(status_code=429, detail=f"AI Error: {last_error}")
 
-async def process_all_in_one(image_path: str | None, text_content: str | None, cv_text: str, api_key: str | None):
+async def process_all_in_one(image_path: str | None, text_content: str | None, cv_text: str, api_key: str | None, cv_file_path: str | None = None):
     """
     The main engine: Extracts job info AND generates professional email in one pass.
     """
@@ -87,6 +87,23 @@ async def process_all_in_one(image_path: str | None, text_content: str | None, c
             else:
                 source_desc = f"teks lowongan: {text_content}"
 
+            # --- NEW: CV file handling ---
+            if cv_file_path and os.path.exists(cv_file_path):
+                cv_uploaded = genai.upload_file(path=cv_file_path)
+                while cv_uploaded.state.name == 'PROCESSING':
+                    time.sleep(1)
+                    cv_uploaded = genai.get_file(cv_uploaded.name)
+                if cv_uploaded.state.name == 'FAILED':
+                    raise ValueError("Gemini failed to process the CV PDF file.")
+                uploaded_files_to_delete.append(cv_uploaded)
+                input_data.append(cv_uploaded)
+
+            cv_section = (
+                f"--- APPLICANT CV DATA / DATA CV PELAMAR ---\n{cv_text}\n-----------------------------------------------"
+                if cv_text
+                else "--- APPLICANT CV DATA / DATA CV PELAMAR ---\n(Attached as PDF file — read directly)\n-----------------------------------------------"
+            )
+
             prompt = f"""
             TASK / TUGAS: Analyze the job posting ({source_desc}) and generate a professional job application email based on the applicant's CV.
 
@@ -98,9 +115,7 @@ async def process_all_in_one(image_path: str | None, text_content: str | None, c
             - Pay close attention to email addresses (look for "@" symbols, domains like .com, .id, .co.id, etc.) and job titles.
             - Write the transcript inside <ocr>...</ocr> tags. This is MANDATORY.
 
-            --- APPLICANT CV DATA / DATA CV PELAMAR ---
-            {cv_text}
-            -----------------------------------------------
+            {cv_section}
 
             ============================================================
             CRITICAL STEP 1 — LANGUAGE DETECTION (MANDATORY / WAJIB)

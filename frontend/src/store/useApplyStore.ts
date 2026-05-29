@@ -118,32 +118,8 @@ export async function generateDraft() {
   useApplyStore.getState().setIsProcessing(true);
 
   try {
-    let cvItem = cvHistory.find((cv) => cv.id === selectedCV);
-    let cvText = cvItem?.text;
-
-    if (!cvText && cvItem) {
-      const cvFile = await getDb(`cv_blob_${selectedCV}`);
-      if (cvFile) {
-        const cvFormData = new FormData();
-        cvFormData.append('file', cvFile as File);
-        const cvRes = await axios.post(
-          `${API_BASE_URL}/api/extract-cv`,
-          cvFormData,
-          {
-            headers: {
-              'Content-Type': 'multipart/form-data',
-              'x-api-key': localStorage.getItem('GEMINI_API_KEY'),
-            },
-          },
-        );
-        cvText = cvRes.data.text;
-        useApplyStore.getState().setCvHistory((prev) =>
-          prev.map((cv) =>
-            cv.id === selectedCV ? { ...cv, text: cvText } : cv,
-          ),
-        );
-      }
-    }
+    const cvItem = cvHistory.find((cv) => cv.id === selectedCV);
+    const cvText = cvItem?.text || '';
 
     const formData = new FormData();
     if (file) {
@@ -151,7 +127,14 @@ export async function generateDraft() {
     } else {
       formData.append('text', textInput);
     }
-    formData.append('cv_text', cvText || '');
+
+    const cvFile = await getDb(`cv_blob_${selectedCV}`);
+    if (cvFile instanceof Blob) {
+      formData.append('cv_file', cvFile as File);
+    }
+    if (cvText) {
+      formData.append('cv_text', cvText);
+    }
 
     const processRes = await axios.post(
       `${API_BASE_URL}/api/process-all`,
