@@ -7,7 +7,6 @@ import {
   FileEdit,
   LayoutTemplate,
   Mail,
-  Paperclip,
   Send,
   Sparkles,
   Trash2,
@@ -19,7 +18,7 @@ import { ConfirmModal } from '../ui/ConfirmModal';
 import { API_BASE_URL } from '../../lib/constants';
 import { useApplyStore } from '../../store/useApplyStore';
 import { useNotificationStore } from '../../store/useNotificationStore';
-import { handleSend, handleCopyFileCV } from '../../lib/actions';
+import { handleSend } from '../../lib/actions';
 
 interface MasterTemplate {
   id: string;
@@ -29,12 +28,10 @@ interface MasterTemplate {
 
 const TEMPLATES_KEY = 'APPLYBOT_TEMPLATES';
 
-const ResultForm = () => {
-  const data = useApplyStore((s) => s.result);
-  const onChange = useApplyStore((s) => s.setResult);
-  const cvHistory = useApplyStore((s) => s.cvHistory);
+const DraftPanel = () => {
+  const data = useApplyStore((s) => s.draft);
+  const setDraft = useApplyStore((s) => s.setDraft);
   const selectedCV = useApplyStore((s) => s.selectedCV);
-  const onCVChange = useApplyStore((s) => s.setSelectedCV);
   const notify = useNotificationStore((s) => s.notify);
 
   const [revisionPrompt, setRevisionPrompt] = useState('');
@@ -45,18 +42,16 @@ const ResultForm = () => {
     isOpen: false,
     targetId: null,
   });
-  const [cvCopied, setCvCopied] = useState(false);
   const [bodyCopied, setBodyCopied] = useState(false);
-  const [cvExists, setCvExists] = useState<boolean | null>(null);
 
   const draft = useMemo<Record<string, any>>(() => data ?? {}, [data]);
   const canSubmit = Boolean((draft.subject || '').trim() && (draft.body || '').trim());
 
   const updateDraft = (patch: Record<string, any>) => {
     if (data) {
-      onChange({ ...data, ...patch });
+      setDraft({ ...data, ...patch });
     } else {
-      onChange(patch as any);
+      setDraft(patch as any);
     }
   };
 
@@ -164,24 +159,6 @@ const ResultForm = () => {
       setIsRevising(false);
     }
   };
-
-  useEffect(() => {
-    const checkCV = async () => {
-      if (!selectedCV) {
-        setCvExists(null);
-        return;
-      }
-      try {
-        const { get } = await import('idb-keyval');
-        const blob = await get(`cv_blob_${selectedCV}`);
-        setCvExists(blob instanceof Blob);
-      } catch {
-        setCvExists(false);
-      }
-    };
-
-    checkCV();
-  }, [selectedCV]);
 
   const inputStyle = {
     backgroundColor: 'var(--bg-primary)',
@@ -334,60 +311,6 @@ const ResultForm = () => {
         </button>
       </form>
 
-      <div className='flex flex-col gap-1.5 mt-2'>
-        <label className='text-xs font-semibold' style={{ color: 'var(--text-secondary)' }}>Pilih CV yang dilampirkan</label>
-        <div className='flex items-center gap-2'>
-          <select
-            value={selectedCV}
-            onChange={(e) => onCVChange(e.target.value)}
-            className='flex-1 rounded-lg px-3 py-2 text-sm focus:outline-none'
-            style={inputStyle}
-          >
-            <option value=''>-- Tidak melampirkan CV --</option>
-            {cvHistory.map((cv) => (
-              <option key={cv.id} value={cv.id}>{cv.name}</option>
-            ))}
-          </select>
-          {selectedCV && (
-            <button
-              type='button'
-              onClick={async () => {
-                const success = await handleCopyFileCV();
-                if (success) {
-                  setCvCopied(true);
-                  window.setTimeout(() => setCvCopied(false), 2200);
-                  notify?.('CV berhasil disalin.', 'success');
-                } else {
-                  if (cvExists === false) {
-                    notify?.('File CV tidak ditemukan di memori browser. Silakan upload ulang CV di Pengaturan.', 'error');
-                  } else {
-                    notify?.('Gagal menyalin CV. Browser mungkin membatasi akses clipboard.', 'warning');
-                  }
-                }
-              }}
-              className={`p-2 rounded-lg transition-all flex items-center gap-1.5 text-xs font-bold border ${
-                cvCopied
-                  ? 'bg-green-500/20 text-green-500 border-green-500/50'
-                  : cvExists === false
-                    ? 'bg-amber-500/20 text-amber-500 border-amber-500/50'
-                    : 'border-[var(--border)]'
-              }`}
-              style={{
-                backgroundColor: (cvCopied || cvExists === false) ? undefined : 'var(--bg-elevated)',
-                color: (cvCopied || cvExists === false) ? undefined : 'var(--text-primary)',
-              }}
-              title={cvExists === false ? 'File CV hilang.' : 'Salin file CV ke clipboard'}
-            >
-              {cvCopied ? <Check size={14} /> : <Paperclip size={14} />}
-              <span>{cvCopied ? 'Berhasil' : 'Salin CV'}</span>
-            </button>
-          )}
-        </div>
-        {cvHistory.length === 0 && (
-          <p className='text-xs mt-1' style={{ color: 'var(--status-yellow)' }}>Anda belum mengunggah CV. Buka menu Settings untuk menambahkan CV.</p>
-        )}
-      </div>
-
       <div className='mt-4 pt-4 grid grid-cols-1 sm:grid-cols-4 gap-2' style={{ borderTop: '1px solid var(--border)' }}>
         <button
           type='button'
@@ -457,4 +380,4 @@ const ResultForm = () => {
   );
 };
 
-export default ResultForm;
+export default DraftPanel;

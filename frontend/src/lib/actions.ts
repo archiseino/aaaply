@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { get as getDb } from 'idb-keyval';
 import { API_BASE_URL } from '../lib/constants';
-import { copyCVToClipboard } from './clipboard';
 import { syncAppAndReload } from './sheet';
 import { useApplyStore } from '../store/useApplyStore';
 import { useTrackerStore } from '../store/useTrackerStore';
@@ -12,7 +11,7 @@ export async function handleSend(
   method: 'outlook' | 'gmail' | 'native',
 ) {
   const {
-    result,
+    draft,
     textInput,
     clearInput,
     editingAppId,
@@ -23,19 +22,19 @@ export async function handleSend(
   const { notify } = useNotificationStore.getState();
   const { setActiveTab } = useAppStore.getState();
 
-  if (!result) return;
+  if (!draft) return;
 
   const addApplication = () => {
     const newApp = {
       id: editingAppId || Date.now().toString(),
-      companyName: result.company_name || 'Perusahaan Tidak Diketahui',
-      jobTitle: result.job_title || 'Posisi Tidak Diketahui',
-      hrEmail: result.hr_email || '-',
+      companyName: draft.company_name || 'Perusahaan Tidak Diketahui',
+      jobTitle: draft.job_title || 'Posisi Tidak Diketahui',
+      hrEmail: draft.hr_email || '-',
       dateApplied: new Date().toISOString(),
       status: 'Applied' as const,
-      subject: result.subject,
-      body: result.body,
-      contextText: result.context_text || textInput,
+      subject: draft.subject,
+      body: draft.body,
+      contextText: draft.context_text || textInput,
     };
     if (editingAppId) {
       setApplications((prev) =>
@@ -84,16 +83,16 @@ export async function handleSend(
       notify('Mengirim email via Gmail...', 'info');
       const { sendGmailWithAttachment } = await import('../utils/gmailApi');
       const res = await sendGmailWithAttachment({
-        to: result.hr_email || '',
-        subject: result.subject || '',
-        body: result.body || '',
+        to: draft.hr_email || '',
+        subject: draft.subject || '',
+        body: draft.body || '',
         cvBlob: cv.blob,
         cvName: cv.name,
       });
       if (res.success) {
         notify('Email berhasil dikirim via Gmail!', 'success');
         addApplication();
-        syncAppAndReload(result).catch(() => {});
+        syncAppAndReload(draft).catch(() => {});
       } else {
         notify(res.error || 'Gagal mengirim email Gmail.', 'error');
       }
@@ -122,16 +121,16 @@ export async function handleSend(
       notify('Mengirim email via Outlook...', 'info');
       const { sendOutlookWithAttachment } = await import('../utils/outlookApi');
       const res = await sendOutlookWithAttachment({
-        to: result.hr_email || '',
-        subject: result.subject || '',
-        body: result.body || '',
+        to: draft.hr_email || '',
+        subject: draft.subject || '',
+        body: draft.body || '',
         cvBlob: cv.blob,
         cvName: cv.name,
       });
       if (res.success) {
         notify('Email berhasil dikirim via Outlook!', 'success');
         addApplication();
-        syncAppAndReload(result).catch(() => {});
+        syncAppAndReload(draft).catch(() => {});
       } else {
         notify(res.error || 'Gagal mengirim email Outlook.', 'error');
       }
@@ -141,9 +140,9 @@ export async function handleSend(
     return;
   }
 
-  const subject = encodeURIComponent(result.subject || '');
-  const body = encodeURIComponent(result.body || '');
-  const to = encodeURIComponent(result.hr_email || '');
+  const subject = encodeURIComponent(draft.subject || '');
+  const body = encodeURIComponent(draft.body || '');
+  const to = encodeURIComponent(draft.hr_email || '');
 
   if (method === 'gmail') {
     window.open(
@@ -164,12 +163,12 @@ export async function handleSend(
       'info',
     );
   } else if (method === 'native') {
-    window.location.href = `mailto:${result.hr_email || ''}?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:${draft.hr_email || ''}?subject=${subject}&body=${body}`;
     notify('Membuka aplikasi email bawaan...', 'info');
   }
 
   addApplication();
-  syncAppAndReload(result).catch(() => {});
+  syncAppAndReload(draft).catch(() => {});
 }
 
 export async function handleJobFinderApply(job: any) {
@@ -178,7 +177,7 @@ export async function handleJobFinderApply(job: any) {
     setSelectedCV,
     setTextInput,
     setInputType,
-    setResult,
+    setDraft,
   } = useApplyStore.getState();
   const { notify } = useNotificationStore.getState();
   const { setActiveTab } = useAppStore.getState();
@@ -225,7 +224,7 @@ export async function handleJobFinderApply(job: any) {
     );
 
     const fullData = processRes.data;
-    setResult({
+    setDraft({
       hr_email: job.email || fullData.hr_email || '',
       company_name: job.company || fullData.company_name,
       job_title: job.title || fullData.job_title,
@@ -251,7 +250,7 @@ export function handleEditApplication(app: any) {
     selectedCV,
     cvHistory,
     setSelectedCV,
-    setResult,
+    setDraft,
     setTextInput,
     setInputType,
     setEditingAppId,
@@ -273,7 +272,7 @@ export function handleEditApplication(app: any) {
     }
   }
 
-  setResult({
+  setDraft({
     company_name: app.companyName,
     job_title: app.jobTitle,
     hr_email: app.hrEmail,
@@ -294,7 +293,4 @@ export function handleContinueAfterDuplicate() {
   useApplyStore.getState().setDuplicateModal({ isOpen: false, data: null });
 }
 
-export async function handleCopyFileCV(): Promise<boolean> {
-  const { selectedCV, cvHistory } = useApplyStore.getState();
-  return copyCVToClipboard(selectedCV, cvHistory);
-}
+

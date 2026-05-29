@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import axios from 'axios';
-import { get as getDb, set as setDb } from 'idb-keyval';
+import { get as getDb } from 'idb-keyval';
 import { API_BASE_URL } from '../lib/constants';
 import type { JobApplication } from '../components/tracker/Tracker';
 import { useNotificationStore } from './useNotificationStore';
 import { useTrackerStore } from './useTrackerStore';
 
-export interface ResultData {
+export interface DraftData {
   hr_email?: string;
   subject?: string;
   body?: string;
@@ -30,8 +30,8 @@ interface ApplyState {
   textInput: string;
   setTextInput: (text: string) => void;
   file: File | null;
-  result: ResultData | null;
-  setResult: (result: ResultData | null) => void;
+  draft: DraftData | null;
+  setDraft: (draft: DraftData | null) => void;
   isProcessing: boolean;
   setIsProcessing: (v: boolean) => void;
   editingAppId: string | null;
@@ -45,18 +45,16 @@ interface ApplyState {
   loadCVHistory: () => void;
   handleFileUpload: (file: File) => void;
   clearInput: () => void;
-  handleCVUpload: (file: File) => Promise<void>;
-  handleDeleteCV: (id: string) => void;
 }
 
 export const useApplyStore = create<ApplyState>((set) => ({
   inputType: 'image',
   setInputType: (inputType) => set({ inputType }),
   textInput: '',
-  setTextInput: (textInput) => set({ textInput, result: null }),
+  setTextInput: (textInput) => set({ textInput, draft: null }),
   file: null,
-  result: null,
-  setResult: (result) => set({ result }),
+  draft: null,
+  setDraft: (draft) => set({ draft }),
   isProcessing: false,
   setIsProcessing: (isProcessing) => set({ isProcessing }),
   editingAppId: null,
@@ -81,46 +79,18 @@ export const useApplyStore = create<ApplyState>((set) => ({
     }
   },
   handleFileUpload: (file) => {
-    set({ file, result: null });
+    set({ file, draft: null });
   },
   clearInput: () => {
     set({
       file: null,
       textInput: '',
-      result: null,
+      draft: null,
       isProcessing: false,
       editingAppId: null,
     });
   },
-  handleCVUpload: async (uploadedFile) => {
-    set({ isProcessing: true });
-    try {
-      const newCV: CVItem = {
-        id: Date.now().toString(),
-        name: uploadedFile.name,
-        size: uploadedFile.size,
-        filename: uploadedFile.name,
-      };
-      await setDb(`cv_blob_${newCV.id}`, uploadedFile);
-      set((state) => {
-        const updated = [newCV, ...state.cvHistory];
-        localStorage.setItem('APPLYBOT_CVS', JSON.stringify(updated));
-        return { cvHistory: updated, selectedCV: newCV.id };
-      });
-      useNotificationStore
-        .getState()
-        .notify(
-          'CV berhasil ditambahkan. AI akan mengekstraknya saat poster diunggah.',
-          'success',
-        );
-    } catch (error: any) {
-      useNotificationStore
-        .getState()
-        .notify('Gagal menyimpan CV: ' + error.message, 'error');
-    } finally {
-      set({ isProcessing: false });
-    }
-  },
+
   handleDeleteCV: (cvId) => {
     set((state) => {
       const updated = state.cvHistory.filter((cv) => cv.id !== cvId);
@@ -133,7 +103,9 @@ export const useApplyStore = create<ApplyState>((set) => ({
   },
 }));
 
-export async function performAnalysis() {
+useApplyStore.getState().loadCVHistory();
+
+export async function generateDraft() {
   const state = useApplyStore.getState();
   const { file, textInput, selectedCV, isProcessing, editingAppId } =
     state;
@@ -193,7 +165,7 @@ export async function performAnalysis() {
     );
 
     const fullData = processRes.data;
-    useApplyStore.getState().setResult({
+    useApplyStore.getState().setDraft({
       hr_email: fullData.hr_email,
       company_name: fullData.company_name,
       job_title: fullData.job_title,
