@@ -12,17 +12,24 @@ export interface SheetApplication {
   notes?: string;
 }
 
-export async function syncFromSheets(sheetId: string, startCell: string = 'B7'): Promise<{ apps: SheetApplication[]; error?: string }> {
+export async function syncFromSheets(
+  sheetId: string,
+  startCell: string = 'B7',
+): Promise<{ apps: SheetApplication[]; error?: string }> {
   try {
-    const res = await fetch(`${API_BASE}/api/applications/sync?sheet_id=${encodeURIComponent(sheetId)}&start_cell=${encodeURIComponent(startCell)}`);
+    const res = await fetch(
+      `${API_BASE}/api/applications/sync?sheet_id=${encodeURIComponent(sheetId)}&start_cell=${encodeURIComponent(startCell)}`,
+    );
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || 'Gagal sync dari Google Sheets');
     }
     const data = await res.json();
     return { apps: data.applications || [] };
-  } catch (e: any) {
-    return { apps: [], error: e.message || 'Gagal terhubung ke server' };
+  } catch (e: unknown) {
+    const errorMesage =
+      e instanceof Error ? e.message : 'Gagal terhubung ke server';
+    return { apps: [], error: errorMesage };
   }
 }
 
@@ -38,7 +45,7 @@ export async function syncAppend(
     email?: string;
     status?: string;
     notes?: string;
-  }
+  },
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch(`${API_BASE}/api/applications/sync`, {
@@ -80,7 +87,7 @@ export async function syncUpdate(
     email?: string;
     status?: string;
     notes?: string;
-  }
+  },
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch(`${API_BASE}/api/applications/sync`, {
@@ -113,7 +120,7 @@ export async function syncUpdate(
 export async function syncDelete(
   sheetId: string,
   startCell: string,
-  rowIndex: number
+  rowIndex: number,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const res = await fetch(`${API_BASE}/api/applications/sync`, {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { X, Settings, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,45 +21,48 @@ import { handleContinueAfterDuplicate } from './lib/actions';
 
 function App() {
   const activeTab = useAppStore((s) => s.activeTab);
-  
+
   const isSettingsOpen = useAppStore((s) => s.isSettingsOpen);
   const infoModal = useAppStore((s) => s.infoModal);
   const setInfoModal = useAppStore((s) => s.setInfoModal);
   const setSheetId = useAppStore((s) => s.setSheetId);
 
   const notifications = useNotificationStore((s) => s.notifications);
-  const notify = useNotificationStore((s) => s.notify);
   const removeNotification = useNotificationStore((s) => s.removeNotification);
 
   const duplicateModal = useApplyStore((s) => s.duplicateModal);
   const clearInput = useApplyStore((s) => s.clearInput);
-  const loadCVHistory = useApplyStore((s) => s.loadCVHistory);
   const loadFromLocalStorage = useTrackerStore((s) => s.loadFromLocalStorage);
+  const setApplications = useTrackerStore((s) => s.setApplications);
 
-  const [, setLocalSheetId] = useState(
-    () => localStorage.getItem('SOBAT_SHEET_ID') || '',
-  );
-
+  // Initial load the data from sheets and the cv information
   useEffect(() => {
     loadFromLocalStorage();
-    loadCVHistory();
-    const sid = localStorage.getItem('SOBAT_SHEET_ID');
-    if (sid) {
-      setLocalSheetId(sid);
-      setSheetId(sid);
-      const sc = localStorage.getItem('SOBAT_START_CELL') || 'B7';
+    useApplyStore.getState().loadCVHistory();
+    const sheetId = localStorage.getItem('SOBAT_SHEET_ID');
+    if (sheetId) {
+      setSheetId(sheetId);
+      const startCell = localStorage.getItem('SOBAT_START_CELL') || 'B7';
       import('./utils/sheetsSync').then(({ syncFromSheets }) => {
-        syncFromSheets(sid, sc).then(({ apps, error }) => {
+        syncFromSheets(sheetId, startCell).then(({ apps, error }) => {
           if (error || apps.length === 0) return;
           import('./lib/sheet').then(({ mapSheetToApplications }) => {
-            useTrackerStore
-              .getState()
-              .setApplications(mapSheetToApplications(apps));
+            setApplications(mapSheetToApplications(apps));
           });
         });
       });
     }
-  }, []);
+  }, [loadFromLocalStorage, setSheetId, setApplications]);
+
+  const prevSettings = useRef(isSettingsOpen);
+  useEffect(() => {
+    if (prevSettings.current && !isSettingsOpen) {
+      useApplyStore.getState().loadCVHistory();
+      const sheetId = localStorage.getItem('SOBAT_SHEET_ID') || '';
+      useAppStore.getState().setSheetId(sheetId);
+    }
+    prevSettings.current = isSettingsOpen;
+  }, [isSettingsOpen]);
 
   useEffect(() => {
     const unsub = useTrackerStore.subscribe(({ applications }) => {
@@ -99,20 +102,7 @@ function App() {
         </AnimatePresence>
       </main>
 
-      <AnimatePresence>
-        {isSettingsOpen && (
-          <SettingsModal
-            onClose={() => {
-              useAppStore.getState().setIsSettingsOpen(false);
-              loadCVHistory();
-              const sid = localStorage.getItem('SOBAT_SHEET_ID') || '';
-              setLocalSheetId(sid);
-              setSheetId(sid);
-            }}
-            notify={notify}
-          />
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{isSettingsOpen && <SettingsModal />}</AnimatePresence>
 
       <ConfirmModal
         isOpen={duplicateModal.isOpen}

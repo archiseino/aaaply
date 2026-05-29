@@ -8,7 +8,10 @@ interface AppState {
   isSettingsOpen: boolean;
   setIsSettingsOpen: (open: boolean) => void;
   infoModal: { isOpen: boolean; type: 'about' | 'privacy' | null };
-  setInfoModal: (modal: { isOpen: boolean; type: 'about' | 'privacy' | null }) => void;
+  setInfoModal: (modal: {
+    isOpen: boolean;
+    type: 'about' | 'privacy' | null;
+  }) => void;
   sheetId: string;
   setSheetId: (id: string) => void;
 }

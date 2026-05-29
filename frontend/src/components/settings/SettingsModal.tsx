@@ -62,20 +62,24 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
     }, 1000);
   };
 
-  const handleCVFile = useCallback(async (file: File) => {
-    if (file.type !== 'application/pdf') {
-      if (notify) notify('Hanya format PDF yang didukung untuk CV.', 'warning');
-      else alert('Hanya format PDF yang didukung untuk CV.');
-      return;
-    }
-    const newCV: CVFile = {
-      id: Date.now().toString(),
-      name: file.name,
-      size: file.size,
-    };
-    await setDb(`cv_blob_${newCV.id}`, file);
-    setCvHistory((prev) => [newCV, ...prev]);
-  }, [notify]);
+  const handleCVFile = useCallback(
+    async (file: File) => {
+      if (file.type !== 'application/pdf') {
+        if (notify)
+          notify('Hanya format PDF yang didukung untuk CV.', 'warning');
+        else alert('Hanya format PDF yang didukung untuk CV.');
+        return;
+      }
+      const newCV: CVFile = {
+        id: Date.now().toString(),
+        name: file.name,
+        size: file.size,
+      };
+      await setDb(`cv_blob_${newCV.id}`, file);
+      setCvHistory((prev) => [newCV, ...prev]);
+    },
+    [notify],
+  );
 
   const handleCVFileSelect = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
