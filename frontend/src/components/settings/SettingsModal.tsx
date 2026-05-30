@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { X, Save, File, Check, UploadCloud, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { set as setDb, del as delDb } from 'idb-keyval';
-
 interface SettingsModalProps {
   onClose: () => void;
   notify?: (
@@ -20,33 +19,34 @@ interface CVFile {
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
-  const [apiKey, setApiKey] = useState('');
+  const [apiKey, setApiKey] = useState<string>(() => {
+    return localStorage.getItem('GEMINI_API_KEY') || '';
+  });
   const [saved, setSaved] = useState(false);
-  const [cvHistory, setCvHistory] = useState<CVFile[]>([]);
-  const [activeTab, setActiveTab] = useState<'api' | 'cv'>('cv');
-  const [gmailApiEnabled, setGmailApiEnabled] = useState(false);
-  const [outlookApiEnabled, setOutlookApiEnabled] = useState(false);
-  const [sheetId, setSheetId] = useState('');
-  const [startCell, setStartCell] = useState('B7');
-
-  useEffect(() => {
-    const storedKey = localStorage.getItem('GEMINI_API_KEY') || '';
-    setApiKey(storedKey);
+  const [cvHistory, setCvHistory] = useState<CVFile[]>(() => {
     const storedCVs = localStorage.getItem('APPLYBOT_CVS');
     if (storedCVs) {
       try {
-        setCvHistory(JSON.parse(storedCVs));
-      } catch (e) {}
+        return JSON.parse(storedCVs);
+      } catch (e) {
+        console.error('Error parsing CV history:', e);
+      }
     }
-    setGmailApiEnabled(localStorage.getItem('GMAIL_API_ENABLED') === 'true');
-    setOutlookApiEnabled(
-      localStorage.getItem('OUTLOOK_API_ENABLED') === 'true',
-    );
-    const storedSheetId = localStorage.getItem('SOBAT_SHEET_ID') || '';
-    setSheetId(storedSheetId);
-    const storedStartCell = localStorage.getItem('SOBAT_START_CELL') || 'B7';
-    setStartCell(storedStartCell);
-  }, []);
+    return [];
+  });
+  const [activeTab, setActiveTab] = useState<'api' | 'cv'>('cv');
+  const [gmailApiEnabled, setGmailApiEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('GMAIL_API_ENABLED') === 'true';
+  });
+  const [outlookApiEnabled, setOutlookApiEnabled] = useState<boolean>(() => {
+    return localStorage.getItem('OUTLOOK_API_ENABLED') === 'true';
+  });
+  const [sheetId, setSheetId] = useState(
+    () => localStorage.getItem('SOBAT_SHEET_ID') || '',
+  );
+  const [startCell, setStartCell] = useState(
+    () => localStorage.getItem('SOBAT_START_CELL') || 'B7',
+  );
 
   const handleSave = () => {
     localStorage.setItem('GEMINI_API_KEY', apiKey);
@@ -77,6 +77,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, notify }) => {
       };
       await setDb(`cv_blob_${newCV.id}`, file);
       setCvHistory((prev) => [newCV, ...prev]);
+
+      if (notify) notify('CV berhasil diproses.', 'success');
     },
     [notify],
   );

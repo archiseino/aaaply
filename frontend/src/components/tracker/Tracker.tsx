@@ -58,7 +58,7 @@ interface TrackerProps {
   onEditSave?: (app: JobApplication) => void;
   onAdd?: (app: JobApplication) => void;
   sheetId?: string;
-  onSyncFromSheets?: () => Promise<any>;
+  onSyncFromSheets?: () => Promise<void>;
 }
 
 const statusStyles: Record<string, React.CSSProperties> = {
@@ -275,7 +275,7 @@ const NotesRow: React.FC<{
   }
 
   return (
-    <div className='flex flex-col gap-2 w-full max-w-[560px]'>
+    <div className='flex flex-col gap-2 w-full max-w-[560px] md:max-w-none'>
       <button
         type='button'
         onClick={toggle}
@@ -288,9 +288,7 @@ const NotesRow: React.FC<{
         title='Edit catatan'
       >
         <span className='truncate text-left flex items-center gap-2'>
-          <span>
-            {app.notes ? 'Catatan tersedia' : 'Tambah catatan'}
-          </span>
+          <span>{app.notes ? 'Catatan tersedia' : 'Tambah catatan'}</span>
           {app.notes && (
             <span
               className='text-[10px] opacity-60 font-normal'
@@ -379,7 +377,7 @@ const Tracker: React.FC<TrackerProps> = ({
     targetId: string | null;
     isSynced: boolean;
   }>({ isOpen: false, targetId: null, isSynced: false });
-  const [editConfirmApp, setEditConfirmApp] = useState<JobApplication | null>(
+  const [resendConfirmApp, setResendConfirmApp] = useState<JobApplication | null>(
     null,
   );
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -810,8 +808,6 @@ const Tracker: React.FC<TrackerProps> = ({
                           >
                             <Building2 size={14} />
                             {app.companyName || 'Perusahaan Tidak Diketahui'}
-                            <span style={{ color: 'var(--text-muted)' }}>•</span>
-                            <span className='text-xs'>{app.hrEmail}</span>
                           </span>
                         </div>
                       </td>
@@ -840,7 +836,9 @@ const Tracker: React.FC<TrackerProps> = ({
                           className='text-sm'
                           style={{ color: 'var(--text-secondary)' }}
                         >
-                          {app.hrEmail && app.hrEmail !== '-' ? app.hrEmail : '-'}
+                          {app.hrEmail && app.hrEmail !== '-'
+                            ? app.hrEmail
+                            : '-'}
                         </span>
                       </td>
                       <td className='p-4'>
@@ -920,7 +918,7 @@ const Tracker: React.FC<TrackerProps> = ({
                           </button>
                           <button
                             onClick={() => {
-                              if (app.sheetRowIndex) setEditConfirmApp(app);
+                              if (app.sheetRowIndex) setResendConfirmApp(app);
                               else onEdit(app);
                             }}
                             className='p-1.5 rounded-md transition-colors'
@@ -1104,7 +1102,11 @@ const Tracker: React.FC<TrackerProps> = ({
                   <span>Lewat: {app.method || '-'}</span>
                 </div>
 
-                <NotesRow app={app} onSave={handleEditSaveWrapper} variant='mobile' />
+                <NotesRow
+                  app={app}
+                  onSave={handleEditSaveWrapper}
+                  variant='mobile'
+                />
 
                 <div className='flex justify-between items-center gap-3'>
                   <button
@@ -1123,7 +1125,7 @@ const Tracker: React.FC<TrackerProps> = ({
                   </button>
                   <button
                     onClick={() => {
-                      if (app.sheetRowIndex) setEditConfirmApp(app);
+                      if (app.sheetRowIndex) setResendConfirmApp(app);
                       else onEdit(app);
                     }}
                     className='flex-1 py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-colors'
@@ -1173,14 +1175,14 @@ const Tracker: React.FC<TrackerProps> = ({
       />
 
       <ConfirmModal
-        isOpen={editConfirmApp !== null}
-        title='Edit Lamaran'
-        message='Lamaran ini berasal dari Google Sheets. Perubahan yang disimpan hanya akan tersimpan di aplikasi. Untuk menyinkronkan kembali ke sheet, perbarui status setelah selesai.'
+        isOpen={resendConfirmApp !== null}
+        title='Resend Email'
+        message='Lamaran ini berasal dari Google Sheets. Proses ini akan menghasilkan data baru di dalam sheets.'
         onConfirm={() => {
-          if (editConfirmApp) onEdit(editConfirmApp);
-          setEditConfirmApp(null);
+          if (resendConfirmApp) onEdit(resendConfirmApp);
+          setResendConfirmApp(null);
         }}
-        onCancel={() => setEditConfirmApp(null)}
+        onCancel={() => setResendConfirmApp(null)}
         confirmText='Lanjutkan'
         cancelText='Batal'
       />

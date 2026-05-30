@@ -6,6 +6,8 @@ import { useApplyStore } from '../store/useApplyStore';
 import { useTrackerStore } from '../store/useTrackerStore';
 import { useNotificationStore } from '../store/useNotificationStore';
 import { useAppStore } from '../store/useAppStore';
+import { isGmailApiConfigured } from '../utils/gmailApi';
+import { isOutlookApiConfigured } from '../utils/outlookApi';
 
 export async function handleSend(
   method: 'outlook' | 'gmail' | 'native',
@@ -66,9 +68,7 @@ export async function handleSend(
 
   const isGmailEnabled =
     localStorage.getItem('GMAIL_API_ENABLED') === 'true';
-  const isGmailConfigured =
-    localStorage.getItem('GOOGLE_CLIENT_ID') &&
-    localStorage.getItem('GOOGLE_CLIENT_ID')!.length > 0;
+  const isGmailConfigured = isGmailApiConfigured();
 
   if (method === 'gmail' && isGmailConfigured && isGmailEnabled) {
     try {
@@ -104,9 +104,7 @@ export async function handleSend(
 
   const isOutlookEnabled =
     localStorage.getItem('OUTLOOK_API_ENABLED') === 'true';
-  const isOutlookConfigured =
-    localStorage.getItem('OUTLOOK_CLIENT_ID') &&
-    localStorage.getItem('OUTLOOK_CLIENT_ID')!.length > 0;
+  const isOutlookConfigured = isOutlookApiConfigured();
 
   if (method === 'outlook' && isOutlookConfigured && isOutlookEnabled) {
     try {
@@ -194,6 +192,7 @@ export async function handleJobFinderApply(job: any) {
 
   try {
     let cvTextStr = '';
+    let activeCVId = selectedCV;
     const storedCVs = localStorage.getItem('APPLYBOT_CVS');
     if (storedCVs) {
       try {
@@ -203,9 +202,37 @@ export async function handleJobFinderApply(job: any) {
           (cvs.length > 0 ? cvs[0] : null);
         if (activeCV) {
           if (activeCV.id !== selectedCV) setSelectedCV(activeCV.id);
+          activeCVId = activeCV.id;
           cvTextStr = activeCV.text || '';
         }
       } catch {}
+    }
+
+    if (!cvTextStr && activeCVId) {
+      const cvBlob = await getDb(`cv_blob_${activeCVId}`);
+      if (cvBlob instanceof Blob) {
+        const extForm = new FormData();
+        extForm.append('file', cvBlob as File);
+        try {
+          const extRes = await axios.post(`${API_BASE_URL}/api/extract-cv`, extForm, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              'x-api-key': localStorage.getItem('GEMINI_API_KEY'),
+            },
+            timeout: 30000,
+          });
+          cvTextStr = extRes.data?.text?.trim() || '';
+          if (cvTextStr && storedCVs) {
+            const cvs = JSON.parse(storedCVs);
+            const updated = cvs.map((cv: any) =>
+              cv.id === activeCVId ? { ...cv, text: cvTextStr } : cv,
+            );
+            localStorage.setItem('APPLYBOT_CVS', JSON.stringify(updated));
+          }
+        } catch {
+          notify('Gagal mengekstrak teks CV.', 'warning');
+        }
+      }
     }
 
     const formData = new FormData();
@@ -287,10 +314,6 @@ export function handleEditApplication(app: any) {
     setInputType('text');
   }
   setActiveTab('apply');
-}
-
-export function handleContinueAfterDuplicate() {
-  useApplyStore.getState().setDuplicateModal({ isOpen: false, data: null });
 }
 
 

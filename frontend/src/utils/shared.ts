@@ -11,6 +11,9 @@ export function blobToBase64(blob: Blob): Promise<string> {
 }
 
 export function textToHtml(text: string): string {
+  if (/<[a-z][\s\S]*>/i.test(text.trim())) {
+    return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222">${text}</div>`;
+  }
   const paragraphs = text.split(/\n\s*\n/);
 
   const htmlParagraphs = paragraphs.map(para => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { X, Settings, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,10 +14,7 @@ import { ApplyPage } from './pages/ApplyPage';
 import { JobFinderPage } from './pages/JobFinderPage';
 import { TrackerPage } from './pages/TrackerPage';
 import SettingsModal from './components/settings/SettingsModal';
-import { ConfirmModal } from './components/ui/ConfirmModal';
 import Toast from './components/ui/Toast';
-
-import { handleContinueAfterDuplicate } from './lib/actions';
 
 function App() {
   const activeTab = useAppStore((s) => s.activeTab);
@@ -28,41 +25,31 @@ function App() {
   const setSheetId = useAppStore((s) => s.setSheetId);
 
   const notifications = useNotificationStore((s) => s.notifications);
+  const notify = useNotificationStore((s) => s.notify);
   const removeNotification = useNotificationStore((s) => s.removeNotification);
 
-  const duplicateModal = useApplyStore((s) => s.duplicateModal);
-  const clearInput = useApplyStore((s) => s.clearInput);
+  const loadCVHistory = useApplyStore((s) => s.loadCVHistory);
   const loadFromLocalStorage = useTrackerStore((s) => s.loadFromLocalStorage);
-  const setApplications = useTrackerStore((s) => s.setApplications);
 
-  // Initial load the data from sheets and the cv information
   useEffect(() => {
     loadFromLocalStorage();
-    useApplyStore.getState().loadCVHistory();
-    const sheetId = localStorage.getItem('SOBAT_SHEET_ID');
-    if (sheetId) {
-      setSheetId(sheetId);
-      const startCell = localStorage.getItem('SOBAT_START_CELL') || 'B7';
+    loadCVHistory();
+    const sid = localStorage.getItem('SOBAT_SHEET_ID');
+    if (sid) {
+      setSheetId(sid);
+      const sc = localStorage.getItem('SOBAT_START_CELL') || 'B7';
       import('./utils/sheetsSync').then(({ syncFromSheets }) => {
-        syncFromSheets(sheetId, startCell).then(({ apps, error }) => {
+        syncFromSheets(sid, sc).then(({ apps, error }) => {
           if (error || apps.length === 0) return;
           import('./lib/sheet').then(({ mapSheetToApplications }) => {
-            setApplications(mapSheetToApplications(apps));
+            useTrackerStore
+              .getState()
+              .setApplications(mapSheetToApplications(apps));
           });
         });
       });
     }
-  }, [loadFromLocalStorage, setSheetId, setApplications]);
-
-  const prevSettings = useRef(isSettingsOpen);
-  useEffect(() => {
-    if (prevSettings.current && !isSettingsOpen) {
-      useApplyStore.getState().loadCVHistory();
-      const sheetId = localStorage.getItem('SOBAT_SHEET_ID') || '';
-      useAppStore.getState().setSheetId(sheetId);
-    }
-    prevSettings.current = isSettingsOpen;
-  }, [isSettingsOpen]);
+  }, [loadCVHistory, loadFromLocalStorage, setSheetId]);
 
   useEffect(() => {
     const unsub = useTrackerStore.subscribe(({ applications }) => {
@@ -102,22 +89,19 @@ function App() {
         </AnimatePresence>
       </main>
 
-      <AnimatePresence>{isSettingsOpen && <SettingsModal />}</AnimatePresence>
-
-      <ConfirmModal
-        isOpen={duplicateModal.isOpen}
-        title='Sudah Melamar?'
-        message={`Sepertinya Anda sudah melamar sebagai "${duplicateModal.data?.extractedData?.job_title}" di "${duplicateModal.data?.extractedData?.company_name}" sebelumnya. Tetap lanjut buat lamaran baru?`}
-        confirmText='Lanjut'
-        cancelText='Batal'
-        onConfirm={handleContinueAfterDuplicate}
-        onCancel={() => {
-          useApplyStore
-            .getState()
-            .setDuplicateModal({ isOpen: false, data: null });
-          clearInput();
-        }}
-      />
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <SettingsModal
+            onClose={() => {
+              useAppStore.getState().setIsSettingsOpen(false);
+              loadCVHistory();
+              const sid = localStorage.getItem('SOBAT_SHEET_ID') || '';
+              setSheetId(sid);
+            }}
+            notify={notify}
+          />
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {infoModal.isOpen && (

@@ -64,6 +64,7 @@ const JobFinder: React.FC<JobFinderProps> = ({ onApply, onAddExternalApplication
 
   // Reset pagination when filters change
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
   }, [searchQuery, selectedCategory, selectedSource, searchCity, sortOrder]);
   
@@ -96,6 +97,7 @@ const JobFinder: React.FC<JobFinderProps> = ({ onApply, onAddExternalApplication
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchJobs();
   }, [selectedCategory]);
 

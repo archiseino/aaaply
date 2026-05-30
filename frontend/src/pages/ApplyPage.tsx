@@ -16,9 +16,9 @@ export function ApplyPage() {
         }
       }
     };
-    window.addEventListener('paste', handlePaste as any);
+    window.addEventListener('paste', handlePaste);
     return () => {
-      window.removeEventListener('paste', handlePaste as any);
+      window.removeEventListener('paste', handlePaste);
     };
   }, [handleFileUpload]);
 

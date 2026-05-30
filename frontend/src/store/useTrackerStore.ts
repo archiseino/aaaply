@@ -5,21 +5,22 @@ import {
   mapSheetToApplications,
   syncJobAppAndReload,
 } from '../lib/sheet';
-import {
-  syncFromSheets,
-  syncUpdate,
-  syncDelete,
-} from '../utils/sheetsSync';
+import { syncFromSheets, syncUpdate, syncDelete } from '../utils/sheetsSync';
 import { useNotificationStore } from './useNotificationStore';
 
 interface TrackerState {
   applications: JobApplication[];
-  setApplications: (updater: JobApplication[] | ((prev: JobApplication[]) => JobApplication[])) => void;
-  handleUpdateStatus: (id: string, newStatus: JobApplication['status']) => Promise<void>;
+  setApplications: (
+    updater: JobApplication[] | ((prev: JobApplication[]) => JobApplication[]),
+  ) => void;
+  handleUpdateStatus: (
+    id: string,
+    newStatus: JobApplication['status'],
+  ) => Promise<void>;
   handleDeleteApplication: (id: string) => Promise<void>;
   handleEditSave: (app: JobApplication) => Promise<void>;
   handleAddManualApplication: (newApp: JobApplication) => Promise<void>;
-  handleSyncFromSheets: () => Promise<any[]>;
+  handleSyncFromSheets: () => Promise<void>;
   loadFromLocalStorage: () => void;
 }
 
@@ -56,9 +57,7 @@ export const useTrackerStore = create<TrackerState>((set, get) => ({
         if (!success) {
           set((state) => ({
             applications: state.applications.map((app) =>
-              app.id === id
-                ? { ...app, status: prevStatus || 'Applied' }
-                : app,
+              app.id === id ? { ...app, status: prevStatus || 'Applied' } : app,
             ),
           }));
           notify(
@@ -162,17 +161,14 @@ export const useTrackerStore = create<TrackerState>((set, get) => ({
     const cfg = getSheetCfg();
     if (!cfg.sheetId) {
       notify('Sheet ID belum dikonfigurasi. Isi di Pengaturan.', 'warning');
-      return [];
     }
     const { apps, error } = await syncFromSheets(cfg.sheetId, cfg.startCell);
     if (error) {
       notify('Sync error: ' + error, 'error');
-      return [];
     }
     const mapped = mapSheetToApplications(apps);
     set({ applications: mapped });
     notify(`${apps.length} aplikasi dimuat dari Google Sheets`, 'success');
-    return apps;
   },
 
   loadFromLocalStorage: () => {

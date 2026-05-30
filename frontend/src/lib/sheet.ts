@@ -24,7 +24,7 @@ export function getSheetCfg(): { sheetId: string; startCell: string } {
 }
 
 export function mapSheetToApplications(
-  apps: SheetApplication[]
+  apps: SheetApplication[],
 ): JobApplication[] {
   if (!apps.length) return [];
   const now = new Date().toISOString();
@@ -43,7 +43,7 @@ export function mapSheetToApplications(
 }
 
 export async function syncJobAppAndReload(
-  fields: SyncFields
+  fields: SyncFields,
 ): Promise<JobApplication[] | null> {
   const cfg = getSheetCfg();
   if (!cfg.sheetId) return null;
@@ -52,7 +52,7 @@ export async function syncJobAppAndReload(
     job_title: fields.job_title,
     location: fields.location || '',
     date_applied: fields.date_applied,
-    method: fields.method || '',
+    method: fields.method || 'Email',
     email: fields.email && fields.email !== '-' ? fields.email : '',
     status: fields.status,
     notes: fields.notes || '',

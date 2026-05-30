@@ -98,12 +98,6 @@ async def process_all_in_one(image_path: str | None, text_content: str | None, c
                 uploaded_files_to_delete.append(cv_uploaded)
                 input_data.append(cv_uploaded)
 
-            cv_section = (
-                f"--- APPLICANT CV DATA / DATA CV PELAMAR ---\n{cv_text}\n-----------------------------------------------"
-                if cv_text
-                else "--- APPLICANT CV DATA / DATA CV PELAMAR ---\n(Attached as PDF file — read directly)\n-----------------------------------------------"
-            )
-
             prompt = f"""
             TASK / TUGAS: Analyze the job posting ({source_desc}) and generate a professional job application email based on the applicant's CV.
 
@@ -115,7 +109,9 @@ async def process_all_in_one(image_path: str | None, text_content: str | None, c
             - Pay close attention to email addresses (look for "@" symbols, domains like .com, .id, .co.id, etc.) and job titles.
             - Write the transcript inside <ocr>...</ocr> tags. This is MANDATORY.
 
-            {cv_section}
+            --- APPLICANT CV DATA / DATA CV PELAMAR ---
+            {cv_text}
+            -----------------------------------------------
 
             ============================================================
             CRITICAL STEP 1 — LANGUAGE DETECTION (MANDATORY / WAJIB)
@@ -194,8 +190,9 @@ async def process_all_in_one(image_path: str | None, text_content: str | None, c
             }}
             ```
             """
+
             input_data.insert(0, prompt)
-            config = genai.types.GenerationConfig(max_output_tokens=4096)
+            config = genai.types.GenerationConfig(max_output_tokens=8192)
             response = model.generate_content(input_data, generation_config=config)
             try:
                 text = response.text.strip()
@@ -268,14 +265,18 @@ async def revise_email(current_body: str, instruction: str, cv_text: str | None,
         ============================================================
         REVISION RULES / ATURAN REVISI
         ============================================================
-        1. Use PLAIN TEXT only (No markdown: no **, no #, no _).
+        1. FORMATTING: Preserve the HTML format of the current draft:
+           - Keep <p> tags for paragraphs
+           - Keep <br> for line breaks
+           - Keep <b> for emphasis where appropriate
         2. MUST use data from the applicant's CV above. Do NOT fabricate skills or experience.
         3. MUST align with the job posting context above.
-        4. Use Title Case for names (e.g., Doni Syahrizal, NOT DONI SYAHRIZAL).
-        5. Preserve the signature (Name, Email, WhatsApp) — do not remove it.
-        6. ABSOLUTE ZERO TOLERANCE for language mixing. Every single word must be in the same language.
-        7. EXCEPTION: NEVER translate job title/position name or company name. Keep them EXACTLY as they appear in the original job posting. These are proper nouns.
-        8. COMPLETENESS — ZERO TOLERANCE FOR TRUNCATION:
+        4. Ensure the revised body maintains explicit CV-JD references — match specific CV experiences/achievements to specific job requirements.
+        5. Use Title Case for names (e.g., Doni Syahrizal, NOT DONI SYAHRIZAL).
+        6. Preserve the signature (Name, Email, WhatsApp) — do not remove it.
+        7. ABSOLUTE ZERO TOLERANCE for language mixing. Every single word must be in the same language.
+        8. EXCEPTION: NEVER translate job title/position name or company name. Keep them EXACTLY as they appear in the original job posting. These are proper nouns.
+        9. COMPLETENESS — ZERO TOLERANCE FOR TRUNCATION:
            - Write the COMPLETE revised email body from start to finish.
            - NEVER truncate, cut, abbreviate, or use markers like "[...]" or "[konten dipotong]".
            - NEVER skip any part of the email. Every paragraph must be complete.
@@ -283,7 +284,7 @@ async def revise_email(current_body: str, instruction: str, cv_text: str | None,
         
         RETURN ONLY THE REVISED EMAIL BODY (NO EXPLANATIONS, NO EXTRA TEXT).
         """
-        config = genai.types.GenerationConfig(max_output_tokens=4096)
+        config = genai.types.GenerationConfig(max_output_tokens=8192)
         response = model.generate_content(prompt, generation_config=config)
         return {"revised_body": response.text.strip()}
     return await execute_with_retry(api_key, _execute)

@@ -2,9 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import { get as getDb } from 'idb-keyval';
 import { API_BASE_URL } from '../lib/constants';
-import type { JobApplication } from '../components/tracker/Tracker';
 import { useNotificationStore } from './useNotificationStore';
-import { useTrackerStore } from './useTrackerStore';
 
 export interface DraftData {
   hr_email?: string;
@@ -36,8 +34,6 @@ interface ApplyState {
   setIsProcessing: (v: boolean) => void;
   editingAppId: string | null;
   setEditingAppId: (id: string | null) => void;
-  duplicateModal: { isOpen: boolean; data: any };
-  setDuplicateModal: (modal: { isOpen: boolean; data: any }) => void;
   cvHistory: CVItem[];
   selectedCV: string;
   setSelectedCV: (id: string) => void;
@@ -59,8 +55,6 @@ export const useApplyStore = create<ApplyState>((set) => ({
   setIsProcessing: (isProcessing) => set({ isProcessing }),
   editingAppId: null,
   setEditingAppId: (editingAppId) => set({ editingAppId }),
-  duplicateModal: { isOpen: false, data: null },
-  setDuplicateModal: (duplicateModal) => set({ duplicateModal }),
   cvHistory: [],
   selectedCV: '',
   setSelectedCV: (selectedCV) => set({ selectedCV }),
@@ -90,47 +84,61 @@ export const useApplyStore = create<ApplyState>((set) => ({
       editingAppId: null,
     });
   },
-
-  handleDeleteCV: (cvId) => {
-    set((state) => {
-      const updated = state.cvHistory.filter((cv) => cv.id !== cvId);
-      localStorage.setItem('APPLYBOT_CVS', JSON.stringify(updated));
-      return {
-        cvHistory: updated,
-        selectedCV: state.selectedCV === cvId ? '' : state.selectedCV,
-      };
-    });
-  },
 }));
-
-useApplyStore.getState().loadCVHistory();
 
 export async function generateDraft() {
   const state = useApplyStore.getState();
-  const { file, textInput, selectedCV, isProcessing, editingAppId } =
-    state;
+  const { file, textInput, selectedCV, isProcessing } = state;
   const cvHistory = state.cvHistory;
   const { notify } = useNotificationStore.getState();
-  const applications = useTrackerStore.getState().applications;
 
   if ((!file && !textInput.trim()) || !selectedCV || isProcessing) return;
 
   useApplyStore.getState().setIsProcessing(true);
 
   try {
-    const cvItem = cvHistory.find((cv) => cv.id === selectedCV);
-    const cvText = cvItem?.text || '';
+    // Step 1: Extract CV text from blob if not cached
+    let cvText = cvHistory.find((cv) => cv.id === selectedCV)?.text || '';
+    if (!cvText) {
+      const cvBlob = await getDb(`cv_blob_${selectedCV}`);
+      if (cvBlob instanceof Blob) {
+        const extForm = new FormData();
+        extForm.append('file', cvBlob as File);
+        try {
+          const extRes = await axios.post(
+            `${API_BASE_URL}/api/extract-cv`,
+            extForm,
+            {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+                'x-api-key': localStorage.getItem('GEMINI_API_KEY'),
+              },
+              timeout: 30000,
+            },
+          );
+          cvText = extRes.data?.text?.trim() || '';
+          if (cvText) {
+            const updated = cvHistory.map((cv) =>
+              cv.id === selectedCV ? { ...cv, text: cvText } : cv,
+            );
+            useApplyStore.getState().setCvHistory(updated);
+            localStorage.setItem('APPLYBOT_CVS', JSON.stringify(updated));
+          }
+        } catch {
+          notify(
+            'Gagal mengekstrak teks CV. Melanjutkan tanpa teks CV.',
+            'warning',
+          );
+        }
+      }
+    }
 
+    // Step 2: Generate draft
     const formData = new FormData();
     if (file) {
       formData.append('file', file);
     } else {
       formData.append('text', textInput);
-    }
-
-    const cvFile = await getDb(`cv_blob_${selectedCV}`);
-    if (cvFile instanceof Blob) {
-      formData.append('cv_file', cvFile as File);
     }
     if (cvText) {
       formData.append('cv_text', cvText);
@@ -157,27 +165,10 @@ export async function generateDraft() {
       context_text: fullData.context_text,
       cv_text: cvText,
     });
-
-    const isDuplicate = applications.some(
-      (app: JobApplication) =>
-        editingAppId !== app.id &&
-        app.companyName.toLowerCase() ===
-          (fullData.company_name || '').toLowerCase() &&
-        app.jobTitle.toLowerCase() ===
-          (fullData.job_title || '').toLowerCase(),
-    );
-
-    if (isDuplicate) {
-      useApplyStore
-        .getState()
-        .setDuplicateModal({ isOpen: true, data: { extractedData: fullData } });
-    }
-  } catch (error: any) {
-    notify(
-      'Gagal menganalisis: ' +
-        (error.response?.data?.detail || error.message),
-      'error',
-    );
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Gagal terhubung ke server';
+    notify('Gagal menganalisis: ' + errorMessage, 'error');
   } finally {
     useApplyStore.getState().setIsProcessing(false);
   }

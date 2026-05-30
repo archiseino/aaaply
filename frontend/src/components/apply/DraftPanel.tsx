@@ -1,9 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Briefcase,
   Building2,
-  Check,
-  Copy,
   FileEdit,
   LayoutTemplate,
   Mail,
@@ -19,6 +17,7 @@ import { API_BASE_URL } from '../../lib/constants';
 import { useApplyStore } from '../../store/useApplyStore';
 import { useNotificationStore } from '../../store/useNotificationStore';
 import { handleSend } from '../../lib/actions';
+import type { DraftData } from '../../store/useApplyStore';
 
 interface MasterTemplate {
   id: string;
@@ -36,45 +35,47 @@ const DraftPanel = () => {
 
   const [revisionPrompt, setRevisionPrompt] = useState('');
   const [isRevising, setIsRevising] = useState(false);
-  const [templates, setTemplates] = useState<MasterTemplate[]>([]);
+  const [templates, setTemplates] = useState<MasterTemplate[]>(() => {
+    const stored = localStorage.getItem(TEMPLATES_KEY);
+    const parsed = stored ? JSON.parse(stored) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  });
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
-  const [confirmModal, setConfirmModal] = useState<{ isOpen: boolean; targetId: string | null }>({
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    targetId: string | null;
+  }>({
     isOpen: false,
     targetId: null,
   });
-  const [bodyCopied, setBodyCopied] = useState(false);
 
-  const draft = useMemo<Record<string, any>>(() => data ?? {}, [data]);
-  const canSubmit = Boolean((draft.subject || '').trim() && (draft.body || '').trim());
+  // const draft = useMemo<Record<string, any>>(() => data ?? {}, [data]);
+  const draft = useMemo<DraftData>(() => data ?? {}, [data]);
+  const canSubmit = Boolean(
+    (draft.subject || '').trim() && (draft.body || '').trim(),
+  );
 
-  const updateDraft = (patch: Record<string, any>) => {
+  const updateDraft = (patch: Partial<DraftData>) => {
     if (data) {
       setDraft({ ...data, ...patch });
     } else {
-      setDraft(patch as any);
+      setDraft(patch);
     }
   };
-
-  useEffect(() => {
-    const stored = localStorage.getItem(TEMPLATES_KEY);
-    if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as MasterTemplate[];
-        setTemplates(Array.isArray(parsed) ? parsed : []);
-      } catch {
-        setTemplates([]);
-      }
-    }
-  }, []);
 
   const saveTemplate = () => {
     const body = (draft.body || '').trim();
     if (!body) {
-      notify?.('Body email kosong, tidak bisa disimpan sebagai template.', 'warning');
+      notify?.(
+        'Body email kosong, tidak bisa disimpan sebagai template.',
+        'warning',
+      );
       return;
     }
 
-    const name = window.prompt("Masukkan nama template (misal: 'Formal ID', 'English Tech').");
+    const name = window.prompt(
+      "Masukkan nama template (misal: 'Formal ID', 'English Tech').",
+    );
     if (!name) return;
 
     const newTemplate: MasterTemplate = {
@@ -94,7 +95,7 @@ const DraftPanel = () => {
   };
 
   const executeDeleteTemplate = (id: string) => {
-    const updated = templates.filter(t => t.id !== id);
+    const updated = templates.filter((t) => t.id !== id);
     setTemplates(updated);
     localStorage.setItem(TEMPLATES_KEY, JSON.stringify(updated));
     if (selectedTemplateId === id) setSelectedTemplateId('');
@@ -105,7 +106,7 @@ const DraftPanel = () => {
     const id = e.target.value;
     setSelectedTemplateId(id);
     if (id) {
-      const t = templates.find(t => t.id === id);
+      const t = templates.find((t) => t.id === id);
       if (t) {
         updateDraft({ body: t.body });
         notify?.('Template diterapkan.', 'success');
@@ -123,37 +124,51 @@ const DraftPanel = () => {
 
     const apiKey = localStorage.getItem('GEMINI_API_KEY') || '';
     setIsRevising(true);
+
     try {
       let cvTextForRevision = draft.cv_text || '';
       if (!cvTextForRevision && selectedCV) {
         const storedCVs = localStorage.getItem('APPLYBOT_CVS');
         if (storedCVs) {
           try {
-            const cvs = JSON.parse(storedCVs) as Array<{ id: string; text?: string }>;
-            const match = cvs.find(cv => cv.id === selectedCV);
+            const cvs = JSON.parse(storedCVs) as Array<{
+              id: string;
+              text?: string;
+            }>;
+            const match = cvs.find((cv) => cv.id === selectedCV);
             if (match?.text) cvTextForRevision = match.text;
           } catch {
+            cvTextForRevision = '';
           }
         }
       }
 
-      const res = await axios.post(`${API_BASE_URL}/api/revise`, {
-        current_body: draft.body || '',
-        instruction: revisionPrompt,
-        cv_text: cvTextForRevision,
-        context_text: draft.context_text || '',
-      }, {
-        headers: {
-          'x-api-key': apiKey,
+      const res = await axios.post(
+        `${API_BASE_URL}/api/revise`,
+        {
+          current_body: draft.body || '',
+          instruction: revisionPrompt,
+          cv_text: cvTextForRevision,
+          context_text: draft.context_text || '',
         },
-      });
+        {
+          headers: {
+            'x-api-key': apiKey,
+          },
+        },
+      );
 
       updateDraft({ body: res.data.revised_body || draft.body || '' });
       setRevisionPrompt('');
       notify?.('Body email berhasil direvisi.', 'success');
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { detail?: string } }; message?: string };
-      const msg = 'Gagal merevisi email: ' + (err.response?.data?.detail || err.message || 'Unknown error');
+      const err = error as {
+        response?: { data?: { detail?: string } };
+        message?: string;
+      };
+      const msg =
+        'Gagal merevisi email: ' +
+        (err.response?.data?.detail || err.message || 'Unknown error');
       notify?.(msg, 'error');
     } finally {
       setIsRevising(false);
@@ -175,28 +190,34 @@ const DraftPanel = () => {
       <div className='flex items-center justify-between mb-2'>
         <div className='flex items-center gap-2'>
           <FileEdit size={18} style={{ color: 'var(--text-secondary)' }} />
-          <h2 className='text-lg font-bold' style={{ color: 'var(--text-primary)' }}>Draf Email Lamaran</h2>
+          <h2
+            className='text-lg font-bold'
+            style={{ color: 'var(--text-primary)' }}
+          >
+            Draf Email Lamaran
+          </h2>
         </div>
         <div className='flex items-center gap-2'>
           <button
             type='button'
             onClick={saveTemplate}
             className='px-2.5 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5'
-            style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+            style={{
+              backgroundColor: 'var(--bg-elevated)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border)',
+            }}
           >
             <LayoutTemplate size={12} /> Simpan Template
           </button>
         </div>
       </div>
 
-      {!data && (
-        <div className='mb-3 p-3 rounded-lg text-sm' style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-secondary)' }}>
-          Draf belum tersedia. Pilih CV lalu unggah poster atau isi deskripsi pekerjaan untuk menghasilkan draf otomatis.
-        </div>
-      )}
-
       <div className='flex flex-col gap-1.5'>
-        <label className='text-sm font-semibold flex items-center gap-2' style={{ color: 'var(--text-secondary)' }}>
+        <label
+          className='text-sm font-semibold flex items-center gap-2'
+          style={{ color: 'var(--text-secondary)' }}
+        >
           <Mail size={14} /> Email HR Tujuan
         </label>
         <input
@@ -211,7 +232,10 @@ const DraftPanel = () => {
 
       <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
         <div className='flex flex-col gap-1.5'>
-          <label className='text-xs font-semibold flex items-center gap-1.5' style={{ color: 'var(--text-secondary)' }}>
+          <label
+            className='text-xs font-semibold flex items-center gap-1.5'
+            style={{ color: 'var(--text-secondary)' }}
+          >
             <Building2 size={12} /> Nama Perusahaan
           </label>
           <input
@@ -224,7 +248,10 @@ const DraftPanel = () => {
           />
         </div>
         <div className='flex flex-col gap-1.5'>
-          <label className='text-xs font-semibold flex items-center gap-1.5' style={{ color: 'var(--text-secondary)' }}>
+          <label
+            className='text-xs font-semibold flex items-center gap-1.5'
+            style={{ color: 'var(--text-secondary)' }}
+          >
             <Briefcase size={12} /> Posisi
           </label>
           <input
@@ -239,7 +266,10 @@ const DraftPanel = () => {
       </div>
 
       <div className='flex flex-col gap-1.5'>
-        <label className='text-sm font-semibold flex items-center gap-2' style={{ color: 'var(--text-secondary)' }}>
+        <label
+          className='text-sm font-semibold flex items-center gap-2'
+          style={{ color: 'var(--text-secondary)' }}
+        >
           <Type size={14} /> Subject Email
         </label>
         <input
@@ -252,34 +282,50 @@ const DraftPanel = () => {
         />
       </div>
 
-      <div className='flex items-center gap-2 p-3 rounded-lg' style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
-        <select
-          value={selectedTemplateId}
-          onChange={handleTemplateChange}
-          className='flex-1 rounded-md px-3 py-1.5 text-sm focus:outline-none'
-          style={inputStyle}
+      <div className='flex flex-col gap-1.5'>
+        <label
+          className='text-sm font-semibold flex items-center gap-2'
+          style={{ color: 'var(--text-secondary)' }}
         >
-          <option value=''>-- Pilih Template Tersimpan --</option>
-          {templates.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </select>
-        {selectedTemplateId && (
-          <button
-            type='button'
-            onClick={() => deleteTemplate(selectedTemplateId)}
-            className='p-2 rounded-md transition-colors text-rose-500 hover:bg-rose-500/10'
-            title='Hapus Template'
+          <Type size={14} /> Template Email Body
+        </label>
+        <div className='flex items-center gap-2'>
+          <select
+            value={selectedTemplateId}
+            onChange={handleTemplateChange}
+            className='flex-1 rounded-md px-3 py-1.5 text-sm focus:outline-none'
+            style={inputStyle}
           >
-            <Trash2 size={14} />
-          </button>
-        )}
+            <option value=''>-- Pilih Template Tersimpan --</option>
+            {templates.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          {selectedTemplateId && (
+            <button
+              type='button'
+              onClick={() => deleteTemplate(selectedTemplateId)}
+              className='p-2 rounded-md transition-colors text-rose-500 hover:bg-rose-500/10'
+              title='Hapus Template'
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className='flex flex-col gap-1.5 flex-1 min-h-[150px]'>
-        <label className='text-sm font-semibold flex items-center gap-2' style={{ color: 'var(--text-secondary)' }}>
-          <FileEdit size={14} /> Body Email
-        </label>
+        <div className='flex items-center justify-between'>
+          <label
+            className='text-sm font-semibold flex items-center gap-2'
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            <FileEdit size={14} /> Body Email
+          </label>
+        </div>
+
         <textarea
           value={draft.body || ''}
           onChange={(e) => updateDraft({ body: e.target.value })}
@@ -294,7 +340,11 @@ const DraftPanel = () => {
           type='text'
           value={revisionPrompt}
           onChange={(e) => setRevisionPrompt(e.target.value)}
-          placeholder={isRevising ? 'AI sedang merevisi...' : "Minta AI merevisi teks (contoh: 'buat lebih formal')"}
+          placeholder={
+            isRevising
+              ? 'AI sedang merevisi...'
+              : "Minta AI merevisi teks (contoh: 'buat lebih formal')"
+          }
           disabled={isRevising}
           className='w-full rounded-full px-4 py-2 text-sm pr-10 disabled:opacity-50 focus:outline-none focus:ring-1 transition-all'
           style={{ ...inputStyle, borderRadius: '9999px' }}
@@ -303,45 +353,39 @@ const DraftPanel = () => {
           type='submit'
           disabled={isRevising}
           className='absolute right-1.5 top-1.5 p-1.5 rounded-full transition-colors'
-          style={{ backgroundColor: 'var(--bg-elevated)', color: isRevising ? 'var(--text-muted)' : 'var(--text-primary)' }}
+          style={{
+            backgroundColor: 'var(--bg-elevated)',
+            color: isRevising ? 'var(--text-muted)' : 'var(--text-primary)',
+          }}
         >
-          {isRevising
-            ? <div className='w-3.5 h-3.5 border-2 border-t-transparent rounded-full animate-spin' style={{ borderColor: 'var(--text-muted)', borderTopColor: 'transparent' }} />
-            : <Sparkles size={14} />}
+          {isRevising ? (
+            <div
+              className='w-3.5 h-3.5 border-2 border-t-transparent rounded-full animate-spin'
+              style={{
+                borderColor: 'var(--text-muted)',
+                borderTopColor: 'transparent',
+              }}
+            />
+          ) : (
+            <Sparkles size={14} />
+          )}
         </button>
       </form>
 
-      <div className='mt-4 pt-4 grid grid-cols-1 sm:grid-cols-4 gap-2' style={{ borderTop: '1px solid var(--border)' }}>
-        <button
-          type='button'
-          onClick={async () => {
-            const body = draft.body || '';
-            if (!body.trim()) {
-              notify?.('Body email masih kosong.', 'warning');
-              return;
-            }
-            try {
-              await navigator.clipboard.writeText(body);
-              setBodyCopied(true);
-              window.setTimeout(() => setBodyCopied(false), 2200);
-              notify?.('Isi email berhasil disalin.', 'success');
-            } catch {
-              notify?.('Gagal menyalin isi email.', 'error');
-            }
-          }}
-          disabled={!canSubmit}
-          className='font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all text-sm disabled:opacity-50'
-          style={{ backgroundColor: bodyCopied ? 'var(--status-green)' : 'var(--bg-elevated)', color: bodyCopied ? '#fff' : 'var(--text-primary)', border: '1px solid var(--border)' }}
-        >
-          {bodyCopied ? <Check size={14} /> : <Copy size={14} />} {bodyCopied ? 'Tersalin' : 'Salin'}
-        </button>
-
+      <div
+        className='mt-4 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-2'
+        style={{ borderTop: '1px solid var(--border)' }}
+      >
         <button
           type='button'
           onClick={() => handleSend('gmail')}
           disabled={!canSubmit}
           className='font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all text-sm disabled:opacity-50'
-          style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+          style={{
+            backgroundColor: 'var(--bg-elevated)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border)',
+          }}
         >
           <Send size={14} /> Gmail
         </button>
@@ -351,19 +395,13 @@ const DraftPanel = () => {
           onClick={() => handleSend('outlook')}
           disabled={!canSubmit}
           className='font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all text-sm disabled:opacity-50'
-          style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
+          style={{
+            backgroundColor: 'var(--bg-elevated)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border)',
+          }}
         >
           <Send size={14} /> Outlook
-        </button>
-
-        <button
-          type='button'
-          onClick={() => handleSend('native')}
-          disabled={!canSubmit}
-          className='font-semibold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 transition-all text-sm disabled:opacity-50'
-          style={{ backgroundColor: 'var(--bg-elevated)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}
-        >
-          <Mail size={14} /> Mail App
         </button>
       </div>
 
@@ -372,7 +410,8 @@ const DraftPanel = () => {
         title='Hapus Template'
         message='Yakin ingin menghapus template ini? Data tidak dapat dikembalikan.'
         onConfirm={() => {
-          if (confirmModal.targetId) executeDeleteTemplate(confirmModal.targetId);
+          if (confirmModal.targetId)
+            executeDeleteTemplate(confirmModal.targetId);
         }}
         onCancel={() => setConfirmModal({ isOpen: false, targetId: null })}
       />
